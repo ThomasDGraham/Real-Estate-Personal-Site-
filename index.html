@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thomas | Real Estate & Development</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0C0F0A;
+    --bg-secondary: #141814;
+    --bg-card: #1A1F1A;
+    --text-primary: #F2F0E8;
+    --text-secondary: #9CA396;
+    --accent: #C4A35A;
+    --accent-dim: rgba(196, 163, 90, 0.15);
+    --accent-glow: rgba(196, 163, 90, 0.08);
+    --border: rgba(196, 163, 90, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Navigation */
+  nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 1.5rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(12, 15, 10, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .nav-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .nav-tab:hover {
+    color: var(--text-primary);
+    background: var(--accent-glow);
+  }
+
+  .nav-tab.active {
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* Page sections */
+  .page {
+    display: none;
+    min-height: 100vh;
+    padding-top: 80px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .page.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===================== HOME PAGE ===================== */
+  .hero {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4rem 6rem;
+    position: relative;
+  }
+
+  .hero-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(3rem, 6vw, 5.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 2rem;
+    max-width: 800px;
+  }
+
+  .hero h1 .accent {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .hero-description {
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    max-width: 540px;
+    margin-bottom: 3rem;
+    font-weight: 300;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    max-width: 600px;
+  }
+
+  .stat-item .stat-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-item .stat-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+  }
+
+  /* Decorative element */
+  .hero-deco {
+    position: absolute;
+    right: 6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 320px;
+    height: 320px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-deco::before {
+    content: '';
+    width: 240px;
+    height: 240px;
+    border: 1px solid rgba(196, 163, 90, 0.08);
+    border-radius: 50%;
+  }
+
+  .hero-deco::after {
+    content: '';
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* ===================== ABOUT PAGE ===================== */
+  .about-page {
+    padding: 6rem;
+  }
+
+  .about-header {
+    margin-bottom: 4rem;
+  }
+
+  .about-header .section-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .about-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 700;
+    max-width: 700px;
+    line-height: 1.15;
+  }
+
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .about-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .about-card:hover {
+    border-color: rgba(196, 163, 90, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .about-card .card-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .about-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+  }
+
+  .about-card p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+    border-left: 1px solid var(--border);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 2.5rem;
+    padding-left: 2rem;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2.35rem;
+    top: 0.35rem;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .timeline-item .tl-year {
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+
+  .timeline-item h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  .timeline-item p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.55;
+    font-weight: 300;
+  }
+
+  /* ===================== DASHBOARD PAGE ===================== */
+  .dashboard-page {
+    padding: 6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 80px);
+    text-align: center;
+  }
+
+  .wip-badge {
+    display: inline-block;
+    padding: 0.4rem 1.2rem;
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 2rem;
+    font-weight: 500;
+  }
+
+  .dashboard-page h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    margin-bottom: 1.2rem;
+  }
+
+  .dashboard-page p {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 500px;
+    font-weight: 300;
+    margin-bottom: 3rem;
+  }
+
+  .dashboard-preview {
+    width: 100%;
+    max-width: 800px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .preview-block {
+    flex: 1;
+    height: 80px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-block::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+    animation: shimmer 2.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  .preview-block.tall { height: 160px; }
+  .preview-block.wide { flex: 2; }
+
+  .features-coming {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .feature-tag {
+    padding: 0.5rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .hero { padding: 3rem 2rem; }
+    .hero-deco { display: none; }
+    .about-page { padding: 4rem 2rem; }
+    .about-grid { grid-template-columns: 1fr; }
+    .dashboard-page { padding: 4rem 2rem; }
+    .hero-stats { gap: 2rem; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="logo">T.</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('home')">Home</button>
+    <button class="nav-tab" onclick="showPage('about')">About</button>
+    <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+  </div>
+</nav>
+
+<!-- HOME PAGE -->
+<div id="home" class="page active">
+  <div class="hero">
+    <div class="hero-label">Real Estate Development & Investment</div>
+    <h1>Building the Future of <span class="accent">Real Estate</span></h1>
+    <p class="hero-description">
+      From architectural blueprints to investment portfolios — bridging construction expertise with financial strategy to identify and develop high-value multifamily opportunities in Washington, DC.
+    </p>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-number">PM</div>
+        <div class="stat-label">Marriott International</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">MBA</div>
+        <div class="stat-label">Candidate 2026</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">DC</div>
+        <div class="stat-label">Market Focus</div>
+      </div>
+    </div>
+    <div class="hero-deco"></div>
+  </div>
+</div>
+
+<!-- ABOUT PAGE -->
+<div id="about" class="page">
+  <div class="about-page">
+    <div class="about-header">
+      <div class="section-label">Background & Vision</div>
+      <h2>Where Construction Meets Capital</h2>
+    </div>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="card-icon">&#9635;</div>
+        <h3>Construction & Architecture</h3>
+        <p>Deep foundation in the physical side of real estate — understanding how buildings are designed, permitted, and constructed from the ground up. This technical knowledge is a rare edge in the investment world.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">&#9670;</div>
+        <h3>Project Management at Marriott</h3>
+        <p>Managing complex, multi-stakeholder projects at one of the world's largest hospitality companies. Coordinating timelines, budgets, and cross-functional teams to deliver results at scale.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">&#9651;</div>
+        <h3>MBA — Real Estate Focus</h3>
+        <p>Pursuing a full-time MBA to build the financial acumen needed for real estate private equity — acquisitions modeling, deal structuring, and capital markets strategy.</p>
+      </div>
+      <div class="about-card">
+        <div class="card-icon">&#9678;</div>
+        <h3>Investment Thesis</h3>
+        <p>Targeting multifamily properties and undeveloped lots in the Washington, DC market. Building a data-driven approach to sourcing deals that larger firms overlook.</p>
+      </div>
+    </div>
+
+    <div class="about-header" style="margin-top: 2rem;">
+      <div class="section-label">Career Timeline</div>
+      <h2>The Path Forward</h2>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="tl-year">Foundation</div>
+        <h4>Construction & Architecture Background</h4>
+        <p>Built hands-on expertise in design and construction, understanding every phase from concept to completion.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">Current</div>
+        <h4>Project Manager — Marriott International</h4>
+        <p>Leading complex projects at enterprise scale, developing the operational and leadership skills that translate directly to real estate development.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2026</div>
+        <h4>Full-Time MBA Program</h4>
+        <p>Admitted with a full scholarship to UNC Kenan-Flagler. Also applied to NYU Stern and Columbia Business School. Focused on real estate finance and private equity.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">Summer 2027</div>
+        <h4>Target: Real Estate PE Internship</h4>
+        <p>Securing a summer position in acquisitions and investments at a development firm or real estate private equity fund.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2028 & Beyond</div>
+        <h4>Real Estate Development & Acquisitions</h4>
+        <p>Full-time role on the investment side — sourcing deals, running financial analysis, and building a portfolio of multifamily assets.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="dashboard" class="page">
+  <div class="dashboard-page">
+    <div class="wip-badge">In Development</div>
+    <h2>DC Multifamily Deal Sourcer</h2>
+    <p>A data-driven dashboard for identifying multifamily investment opportunities and undeveloped lots across Washington, DC — powered by public property records and tax data.</p>
+
+    <div class="dashboard-preview">
+      <div class="preview-row">
+        <div class="preview-block"></div>
+        <div class="preview-block"></div>
+        <div class="preview-block"></div>
+      </div>
+      <div class="preview-row">
+        <div class="preview-block wide tall"></div>
+        <div class="preview-block tall"></div>
+      </div>
+      <div class="preview-row">
+        <div class="preview-block"></div>
+        <div class="preview-block wide"></div>
+      </div>
+    </div>
+
+    <div class="features-coming">
+      <div class="feature-tag">Interactive Map</div>
+      <div class="feature-tag">Property Analytics</div>
+      <div class="feature-tag">Owner Lookup</div>
+      <div class="feature-tag">Unit Count & Zoning</div>
+      <div class="feature-tag">Investment Scoring</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showPage(pageId) {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // Remove active from all tabs
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+    // Show selected page
+    document.getElementById(pageId).classList.add('active');
+
+    // Set active tab
+    const tabs = document.querySelectorAll('.nav-tab');
+    const tabMap = { home: 0, about: 1, dashboard: 2 };
+    tabs[tabMap[pageId]].classList.add('active');
+  }
+</script>
+
+</body>
+</html>

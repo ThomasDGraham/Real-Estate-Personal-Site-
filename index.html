@@ -1732,13 +1732,13 @@ async function fetchLiveData() {
   // ── FALLBACK PATH: Live DC GIS API (may be blocked by tracking prevention) ──
   badge.textContent = 'Connecting to DC Open Data (live)…';
 
-  // ENDPOINT A: CamaResPt — native POINT layer (geometry.x / geometry.y work directly)
-  const POINT_URL = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query';
-  // ENDPOINT B: CAMA WebMercator polygon layer — centroid computed from polygon rings
+  // MapServer/25 = authoritative CAMA polygon layer (DCGIS_DATA service — returns geometry)
+  // MapServer/4  = App layer (DCGIS_APPS — strips geometry, attributes only)
   const POLY_URL  = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query';
+  const POINT_URL = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query';
 
   const PAGE_SIZE = 1000;
-  const WHERE = "NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)";
+  const WHERE  = 'NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)';
   const FIELDS = 'SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM';
 
   const usecodeMap = {
@@ -1749,83 +1749,110 @@ async function fetchLiveData() {
     91:'Vacant Lot', 92:'Vacant Residential',
   };
 
-  // Paginated fetch helper — works for both endpoints
-  async function fetchAllPages(baseUrl, extraParams) {
-    let all = [];
-    let offset = 0;
-    let page = 0;
+  // Build URL string explicitly — avoids URLSearchParams encoding quirks
+  function buildUrl(baseUrl, offset) {
+    var qs = 'where='            + encodeURIComponent(WHERE)
+           + '&outFields='       + encodeURIComponent(FIELDS)
+           + '&returnGeometry=true'
+           + '&outSR=4326'
+           + '&resultRecordCount=' + PAGE_SIZE
+           + '&resultOffset='    + offset
+           + '&orderByFields=SSL+ASC'
+           + '&f=geojson';
+    return baseUrl + '?' + qs;
+  }
+
+  // Paginated fetch — explicit URL, no URLSearchParams spread
+  async function fetchAllPages(baseUrl, label) {
+    var all = [];
+    var offset = 0;
+    var page = 0;
     while (true) {
       page++;
-      badge.textContent = `Loading DC properties… page ${page} (${all.length.toLocaleString()} so far)`;
-      const params = new URLSearchParams({
-        where: WHERE,
-        outFields: FIELDS,
-        outSR: '4326',
-        resultRecordCount: String(PAGE_SIZE),
-        resultOffset: String(offset),
-        orderByFields: 'SSL ASC',
-        f: 'json',
-        ...extraParams,
-      });
-      const resp = await fetch(`${baseUrl}?${params}`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} from ${baseUrl}`);
-      const data = await resp.json();
-      if (data.error) throw new Error(`API: ${data.error.message || JSON.stringify(data.error)}`);
-      const feats = data.features || [];
+      badge.textContent = 'Loading DC properties\u2026 page ' + page + ' (' + all.length.toLocaleString() + ' so far)';
+      var url = buildUrl(baseUrl, offset);
+      if (page === 1) console.log('[DC GIS] ' + label + ' URL:', url);
+      var resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var data = await resp.json();
+      if (data.error) throw new Error('API: ' + (data.error.message || JSON.stringify(data.error)));
+      var feats = data.features || [];
       all = all.concat(feats);
-      console.log(`[DC GIS] page ${page}: ${feats.length} features (total ${all.length})`);
+      var g0 = feats[0] ? feats[0].geometry : null;
+      console.log('[DC GIS] ' + label + ' page ' + page + ': ' + feats.length + ' records, geometry[0]=' + JSON.stringify(g0));
       if (feats.length < PAGE_SIZE || data.exceededTransferLimit === false) break;
       offset += PAGE_SIZE;
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(function(r){ setTimeout(r, 300); });
     }
     return all;
   }
 
-  // ── Universal coordinate extractor — handles point x/y AND polygon rings ──
+  // ── Universal coordinate extractor — handles GeoJSON AND legacy ArcGIS JSON ──
   function getCoords(f) {
-    const g = f.geometry;
+    var g = f.geometry;
     if (!g) return null;
-    // Point layer: geometry = { x: lng, y: lat }
+
+    // GeoJSON Point: { type:"Point", coordinates:[lng,lat] }
+    if (g.type === 'Point' && Array.isArray(g.coordinates) && g.coordinates.length >= 2) {
+      return { lat: g.coordinates[1], lng: g.coordinates[0] };
+    }
+    // GeoJSON Polygon: { type:"Polygon", coordinates:[[[lng,lat],...]] }
+    if (g.type === 'Polygon' && Array.isArray(g.coordinates) && g.coordinates[0]) {
+      var c = polyCenter([g.coordinates[0]]);
+      if (c) return { lat: c.y, lng: c.x };
+    }
+    // GeoJSON MultiPolygon: { type:"MultiPolygon", coordinates:[[[[lng,lat],...]]] }
+    if (g.type === 'MultiPolygon' && Array.isArray(g.coordinates) && g.coordinates[0] && g.coordinates[0][0]) {
+      var c = polyCenter([g.coordinates[0][0]]);
+      if (c) return { lat: c.y, lng: c.x };
+    }
+    // Legacy ArcGIS JSON Point: { x:lng, y:lat }
     if (typeof g.x === 'number' && typeof g.y === 'number' && g.x !== 0 && g.y !== 0) {
       return { lat: g.y, lng: g.x };
     }
-    // Polygon layer: geometry = { rings: [[[lng,lat], ...]] }
+    // Legacy ArcGIS JSON Polygon: { rings:[[[lng,lat],...]] }
     if (Array.isArray(g.rings) && g.rings.length > 0 && g.rings[0].length > 0) {
-      const c = polyCenter(g.rings);
+      var c = polyCenter(g.rings);
       if (c) return { lat: c.y, lng: c.x };
     }
     return null;
   }
 
   try {
-    let allFeatures = [];
+    var allFeatures = [];
 
-    // ── Try Point layer first ────────────────────────────────────────────────
+    // ── Primary: MapServer/25 polygon layer (DCGIS_DATA — geometry enabled) ──
     try {
-      badge.textContent = 'Connecting to DC Open Data…';
-      allFeatures = await fetchAllPages(POINT_URL, { returnGeometry: 'true' });
-      // Log the geometry structure of the first few features for debugging
-      console.log('[DC GIS] Point layer raw count:', allFeatures.length);
-      if (allFeatures[0]) console.log('[DC GIS] Feature[0] geometry:', JSON.stringify(allFeatures[0].geometry));
-      if (allFeatures[1]) console.log('[DC GIS] Feature[1] geometry:', JSON.stringify(allFeatures[1].geometry));
+      badge.textContent = 'Connecting to DC Open Data\u2026';
+      allFeatures = await fetchAllPages(POLY_URL, 'MapServer/25');
     } catch (e1) {
-      console.warn('[DC GIS] Point layer failed:', e1.message, '— trying polygon layer…');
+      console.warn('[DC GIS] MapServer/25 failed:', e1.message);
     }
 
-    // ── Fall back to polygon layer if needed ─────────────────────────────────
-    if (allFeatures.length === 0) {
-      badge.textContent = 'Trying fallback data source…';
-      allFeatures = await fetchAllPages(POLY_URL, { returnGeometry: 'true' });
-      console.log('[DC GIS] Polygon layer raw count:', allFeatures.length);
-      if (allFeatures[0]) console.log('[DC GIS] Poly Feature[0] geometry:', JSON.stringify(allFeatures[0].geometry));
+    // ── Fallback: MapServer/4 — triggered if count=0 OR geometry absent ──────
+    var hasGeom = allFeatures.length > 0 && getCoords(allFeatures[0]) !== null;
+    console.log('[DC GIS] MapServer/25 result: ' + allFeatures.length + ' records, hasGeom=' + hasGeom);
+    if (allFeatures.length === 0 || !hasGeom) {
+      badge.textContent = 'Trying fallback endpoint\u2026';
+      try {
+        allFeatures = await fetchAllPages(POINT_URL, 'MapServer/4');
+        var hasGeom2 = allFeatures.length > 0 && getCoords(allFeatures[0]) !== null;
+        console.log('[DC GIS] MapServer/4 result: ' + allFeatures.length + ' records, hasGeom=' + hasGeom2);
+      } catch (e2) {
+        console.warn('[DC GIS] MapServer/4 also failed:', e2.message);
+      }
     }
 
     if (allFeatures.length === 0) {
       throw new Error('DC Open Data returned 0 features — the API may be temporarily down.');
     }
 
-    // ── Transform features — getCoords() handles both point and polygon ───────
-    const afterBldg = allFeatures.filter(f => f.attributes.BLDG_NUM === 1 || !f.attributes.BLDG_NUM);
+    // ── Transform features — getCoords() handles both GeoJSON and ArcGIS JSON ──
+    // GeoJSON uses f.properties; ArcGIS JSON uses f.attributes — support both
+    const afterBldg = allFeatures.filter(f => {
+      const a = f.properties || f.attributes || {};
+      return a.BLDG_NUM === 1 || !a.BLDG_NUM;
+    });
     console.log(`[DC GIS] After BLDG_NUM filter: ${afterBldg.length} of ${allFeatures.length}`);
 
     const liveProps = afterBldg
@@ -1833,7 +1860,7 @@ async function fetchLiveData() {
         const coords = getCoords(f);
         if (!coords) return null; // skip features with no usable geometry
         const { lat, lng } = coords;
-        const a = f.attributes;
+        const a = f.properties || f.attributes || {};
         const use = usecodeMap[a.USECODE] || 'Multifamily';
         const isVacant = [89, 91, 92].includes(a.USECODE);
         return {
@@ -1867,7 +1894,7 @@ async function fetchLiveData() {
       // Log the first 3 raw features so we can see exactly what geometry came back
       allFeatures.slice(0, 3).forEach((f, i) => {
         console.error(`[DC GIS] Raw feature[${i}] geometry:`, JSON.stringify(f.geometry));
-        console.error(`[DC GIS] Raw feature[${i}] attributes:`, JSON.stringify(f.attributes));
+        console.error(`[DC GIS] Raw feature[${i}] properties:`, JSON.stringify(f.properties || f.attributes));
       });
       throw new Error(`API returned ${allFeatures.length} records but getCoords() returned null for all. See console for raw geometry structure.`);
     }

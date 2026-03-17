@@ -106,32 +106,42 @@ def nearest_metro(lat, lng):
             best_dist, best_name = d, name
     return best_name, round(best_dist, 2)
 
-def fetch_pages(url, extra_params, label=""):
+def build_url(base_url, offset):
+    """Build ArcGIS query URL explicitly — no dict spread, returnGeometry always included."""
+    qs = (
+        "where="            + urllib.parse.quote(WHERE, safe="")
+        + "&outFields="     + urllib.parse.quote(FIELDS, safe="")
+        + "&returnGeometry=true"
+        + "&outSR=4326"
+        + "&resultRecordCount=" + str(PAGE_SIZE)
+        + "&resultOffset="  + str(offset)
+        + "&orderByFields=SSL+ASC"
+        + "&f=geojson"
+    )
+    return base_url + "?" + qs
+
+def fetch_pages(url, label=""):
     """Paginate through all records from an ArcGIS REST endpoint."""
     all_features = []
     offset = 0
     page = 0
     while True:
         page += 1
-        params = {
-            "where": WHERE,
-            "outFields": FIELDS,
-            "outSR": "4326",
-            "resultRecordCount": PAGE_SIZE,
-            "resultOffset": offset,
-            "orderByFields": "SSL ASC",
-            "f": "json",
-            **extra_params,
-        }
+        full_url = build_url(url, offset)
+        if page == 1:
+            print(f"  {label} URL: {full_url[:120]}…")
         print(f"  {label} page {page} (offset {offset}, fetched {len(all_features)} so far)…", end=" ", flush=True)
-        full_url = f"{url}?{urllib.parse.urlencode(params)}"
         with urllib.request.urlopen(full_url, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         if "error" in data:
             raise RuntimeError(f"API error: {data['error']}")
         features = data.get("features", [])
         all_features.extend(features)
-        print(f"got {len(features)}")
+        # Log geometry of first feature on page 1 for debugging
+        if page == 1 and features:
+            print(f"got {len(features)}, geom[0]={features[0].get('geometry')}")
+        else:
+            print(f"got {len(features)}")
         if len(features) < PAGE_SIZE or not data.get("exceededTransferLimit", True):
             break
         offset += PAGE_SIZE
@@ -208,21 +218,31 @@ def main():
     raw_features = []
     is_point = False
 
+    # Try polygon layer first (DCGIS_DATA — geometry reliably returned)
     try:
-        raw_features = fetch_pages(POINT_URL, {"returnGeometry": "true"}, label="CamaResPt")
+        raw_features = fetch_pages(POLY_URL, label="MapServer/25 polygon")
         first = raw_features[0] if raw_features else None
-        if first and first.get("geometry") and first["geometry"].get("x") is not None:
-            is_point = True
-            print(f"  ✓ Point layer — got {len(raw_features)} features")
+        has_geom = first and first.get("geometry") is not None
+        if has_geom:
+            print(f"  ✓ Polygon layer — got {len(raw_features)} features with geometry")
         else:
-            print("  ✗ Point layer returned no geometry — trying polygon layer…")
+            print(f"  ✗ Polygon layer returned {len(raw_features)} features but geometry=None — trying point layer…")
             raw_features = []
     except Exception as e:
-        print(f"  ✗ Point layer failed: {e} — trying polygon layer…")
+        print(f"  ✗ Polygon layer failed: {e} — trying point layer…")
 
+    # Fall back to point layer (DCGIS_APPS) if polygon layer failed or had no geometry
     if not raw_features:
-        raw_features = fetch_pages(POLY_URL, {"returnGeometry": "true", "maxAllowableOffset": "0.00005"}, label="Polygon")
-        print(f"  ✓ Polygon layer — got {len(raw_features)} features")
+        try:
+            raw_features = fetch_pages(POINT_URL, label="MapServer/4 point")
+            first = raw_features[0] if raw_features else None
+            if first and first.get("geometry") and first["geometry"].get("x") is not None:
+                is_point = True
+                print(f"  ✓ Point layer — got {len(raw_features)} features with geometry")
+            else:
+                print(f"  ✗ Point layer also returned no geometry. Both endpoints failed.")
+        except Exception as e:
+            print(f"  ✗ Point layer failed: {e}")
 
     print(f"  Raw features: {len(raw_features)}")
 
@@ -231,31 +251,36 @@ def main():
     props = []
     skipped = 0
     for i, f in enumerate(raw_features):
-        a = f.get("attributes", {})
+        # GeoJSON uses "properties"; ArcGIS JSON uses "attributes" — support both
+        a = f.get("properties") or f.get("attributes") or {}
         # Skip secondary buildings on same lot
         if a.get("BLDG_NUM") not in (None, 0, 1):
             skipped += 1
             continue
-        # Get coordinates
+        # Get coordinates — handle GeoJSON and legacy ArcGIS JSON formats
         geom = f.get("geometry")
         if not geom:
             skipped += 1
             continue
-        if is_point:
-            if geom.get("x") is None or geom.get("y") is None:
-                skipped += 1
-                continue
-            lat, lng = geom["y"], geom["x"]
-        else:
-            rings = geom.get("rings")
-            if not rings:
-                skipped += 1
-                continue
-            coords = poly_center(rings)
-            if not coords:
-                skipped += 1
-                continue
-            lng, lat = coords
+        lat = lng = None
+        gtype = geom.get("type", "")
+        coords_field = geom.get("coordinates")
+        if gtype == "Point" and coords_field and len(coords_field) >= 2:
+            lng, lat = coords_field[0], coords_field[1]
+        elif gtype == "Polygon" and coords_field and coords_field[0]:
+            c = poly_center([coords_field[0]])
+            if c: lng, lat = c
+        elif gtype == "MultiPolygon" and coords_field and coords_field[0] and coords_field[0][0]:
+            c = poly_center([coords_field[0][0]])
+            if c: lng, lat = c
+        elif geom.get("x") is not None and geom.get("y") is not None:
+            lng, lat = geom["x"], geom["y"]
+        elif geom.get("rings"):
+            c = poly_center(geom["rings"])
+            if c: lng, lat = c
+        if lat is None or lng is None:
+            skipped += 1
+            continue
 
         # Skip if coordinates look wrong for DC (rough bounding box)
         if not (38.7 < lat < 39.1 and -77.2 < lng < -76.9):

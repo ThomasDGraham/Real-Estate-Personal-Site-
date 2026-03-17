@@ -1672,15 +1672,33 @@ function updateStats(properties) {
 }
 
 // --- LIVE DATA FETCH (paginated — pulls ALL matching properties) ---
+
+// Compute the centroid of a polygon from its ring coordinates (fallback for polygon layers)
+function polyCenter(rings) {
+  const ring = rings[0];
+  if (!ring || ring.length === 0) return null;
+  let x = 0, y = 0;
+  for (const pt of ring) { x += pt[0]; y += pt[1]; }
+  return { x: x / ring.length, y: y / ring.length };
+}
+
 async function fetchLiveData() {
   if (liveDataLoaded) return;
 
   const badge = document.getElementById('data-badge');
   const exportBtn = document.getElementById('export-btn');
+  const propList = document.getElementById('prop-list');
   badge.textContent = 'Connecting to DC Open Data...';
 
-  const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query';
+  // ENDPOINT A: CamaResPt — native POINT layer (geometry.x / geometry.y work directly)
+  const POINT_URL = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query';
+  // ENDPOINT B: CAMA WebMercator polygon layer — centroid computed from polygon rings
+  const POLY_URL  = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query';
+
   const PAGE_SIZE = 1000;
+  const WHERE = "NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)";
+  const FIELDS = 'SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM';
+
   const usecodeMap = {
     13:'Cooperative Apartment', 21:'Duplex', 22:'Duplex/Flat', 23:'Triplex',
     24:'Row House (3+ units)', 25:'Semi-Detached (3+ units)', 29:'Walk-Up Apartment',
@@ -1689,54 +1707,99 @@ async function fetchLiveData() {
     91:'Vacant Lot', 92:'Vacant Residential',
   };
 
-  try {
-    let allFeatures = [];
+  // Paginated fetch helper — works for both endpoints
+  async function fetchAllPages(baseUrl, extraParams) {
+    let all = [];
     let offset = 0;
-    let keepGoing = true;
-    let pageNum = 0;
-
-    while (keepGoing) {
-      pageNum++;
-      badge.textContent = `Fetching page ${pageNum} from DC Open Data... (${allFeatures.length} records so far)`;
-
+    let page = 0;
+    while (true) {
+      page++;
+      badge.textContent = `Loading DC properties… page ${page} (${all.length.toLocaleString()} so far)`;
       const params = new URLSearchParams({
-        where: 'NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)',
-        outFields: 'SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM',
-        returnGeometry: 'false',
-        returnCentroid: 'true',
+        where: WHERE,
+        outFields: FIELDS,
         outSR: '4326',
-        resultRecordCount: PAGE_SIZE.toString(),
-        resultOffset: offset.toString(),
+        resultRecordCount: String(PAGE_SIZE),
+        resultOffset: String(offset),
         orderByFields: 'SSL ASC',
         f: 'json',
+        ...extraParams,
       });
-
-      const resp = await fetch(`${BASE}?${params}`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const resp = await fetch(`${baseUrl}?${params}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} from ${baseUrl}`);
       const data = await resp.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(`API: ${data.error.message || JSON.stringify(data.error)}`);
+      const feats = data.features || [];
+      all = all.concat(feats);
+      console.log(`[DC GIS] page ${page}: ${feats.length} features (total ${all.length})`);
+      if (feats.length < PAGE_SIZE || data.exceededTransferLimit === false) break;
+      offset += PAGE_SIZE;
+      await new Promise(r => setTimeout(r, 300));
+    }
+    return all;
+  }
 
-      const features = data.features || [];
-      allFeatures = allFeatures.concat(features);
+  try {
+    let allFeatures = [];
+    let isPointLayer = false;
 
-      // Stop if we got fewer than a full page or API says no more
-      if (features.length < PAGE_SIZE || data.exceededTransferLimit === false) {
-        keepGoing = false;
+    // ── Try Point layer first (fastest, most reliable) ──────────────────────
+    try {
+      badge.textContent = 'Connecting to DC Open Data (CamaResPt point layer)…';
+      allFeatures = await fetchAllPages(POINT_URL, { returnGeometry: 'true' });
+      // Verify we actually got point geometry (x/y on first feature)
+      const first = allFeatures[0];
+      if (first && first.geometry && first.geometry.x !== undefined) {
+        isPointLayer = true;
+        console.log('[DC GIS] ✓ Point layer success. First feature geometry:', first.geometry);
       } else {
-        offset += PAGE_SIZE;
-        // Small delay to be respectful of DC's API
-        await new Promise(r => setTimeout(r, 300));
+        console.warn('[DC GIS] Point layer returned no geometry, switching to polygon fallback. First feature:', first);
+        allFeatures = []; // reset so we fall through
       }
+    } catch (e1) {
+      console.warn('[DC GIS] Point layer failed:', e1.message, '— trying polygon layer…');
     }
 
-    if (allFeatures.length === 0) throw new Error('No features returned');
+    // ── Fall back to polygon layer if point layer failed ─────────────────────
+    if (allFeatures.length === 0) {
+      badge.textContent = 'Trying polygon layer with centroid calculation…';
+      allFeatures = await fetchAllPages(POLY_URL, {
+        returnGeometry: 'true',
+        maxAllowableOffset: '0.00005', // simplify polygons to reduce payload
+      });
+      isPointLayer = false;
+      console.log('[DC GIS] ✓ Polygon layer success. First feature:', allFeatures[0]);
+    }
 
-    // Transform to our property format
+    if (allFeatures.length === 0) {
+      throw new Error('Both DC GIS endpoints returned 0 features. The API may be temporarily down.');
+    }
+
+    console.log(`[DC GIS] Raw features: ${allFeatures.length}, isPointLayer: ${isPointLayer}`);
+
+    // ── Transform features to our property format ────────────────────────────
     const liveProps = allFeatures
       .filter(f => f.attributes.BLDG_NUM === 1 || !f.attributes.BLDG_NUM)
-      .filter(f => f.centroid && f.centroid.x && f.centroid.y)
+      .filter(f => {
+        if (isPointLayer) {
+          return f.geometry && f.geometry.x !== undefined && f.geometry.y !== undefined
+                 && f.geometry.x !== 0 && f.geometry.y !== 0;
+        } else {
+          return f.geometry && f.geometry.rings && f.geometry.rings.length > 0;
+        }
+      })
       .map((f, i) => {
         const a = f.attributes;
+        let lat, lng;
+        if (isPointLayer) {
+          lat = f.geometry.y;
+          lng = f.geometry.x;
+        } else {
+          const c = polyCenter(f.geometry.rings);
+          if (!c) return null;
+          lat = c.y;
+          lng = c.x;
+        }
         const use = usecodeMap[a.USECODE] || 'Multifamily';
         const isVacant = [89, 91, 92].includes(a.USECODE);
         return {
@@ -1745,8 +1808,7 @@ async function fetchLiveData() {
           address: a.SSL ? 'SSL: ' + a.SSL : 'DC Property',
           ward: 0,
           neighborhood: 'DC',
-          lat: f.centroid.y,
-          lng: f.centroid.x,
+          lat, lng,
           num_units: a.NUM_UNITS || 0,
           stories: a.STORIES || 0,
           year_built: a.AYB || null,
@@ -1762,15 +1824,20 @@ async function fetchLiveData() {
           assessment: 0,
           tax: 0,
         };
-      });
+      })
+      .filter(Boolean); // remove any nulls from failed centroid calc
 
-    // First pass: score with CAMA data only and render immediately
+    console.log(`[DC GIS] After filtering/mapping: ${liveProps.length} valid properties`);
+
+    if (liveProps.length === 0) {
+      throw new Error(`API returned ${allFeatures.length} raw records but 0 passed the geometry filter. Check console for details.`);
+    }
+
+    // ── First render pass (CAMA data only, no owner info yet) ────────────────
     allProperties = liveProps.map(p => ({ ...p, score: computeScore(p) }));
     filteredProperties = [...allProperties];
 
-    // Reset filters
-    minUnits = 0;
-    minScore = 0;
+    minUnits = 0; minScore = 0;
     document.getElementById('units-slider').value = 0;
     document.getElementById('score-slider').value = 0;
     document.getElementById('units-val').textContent = 'Any';
@@ -1784,26 +1851,37 @@ async function fetchLiveData() {
 
     liveDataLoaded = true;
     exportBtn.disabled = false;
-    badge.textContent = `${liveProps.length.toLocaleString()} properties loaded — fetching owner & address data...`;
+    badge.textContent = `${liveProps.length.toLocaleString()} properties loaded — fetching owner & address data…`;
 
-    // Second pass: enrich with Tax Extract (owner, address, ward, zoning)
+    // ── Second pass: enrich with Tax Extract (owner, address, ward, zoning) ──
     try {
       await enrichWithTaxData(allProperties);
-      // Re-score (some factors may change with new ward/zoning data)
       allProperties = allProperties.map(p => ({ ...p, score: computeScore(p) }));
       filteredProperties = [...allProperties];
       renderMarkers(filteredProperties);
       renderList(filteredProperties);
       updateStats(filteredProperties);
     } catch (e) {
-      console.warn('Tax enrichment failed, proceeding with CAMA data only:', e);
+      console.warn('[DC GIS] Tax enrichment failed (owner data unavailable):', e);
     }
 
     badge.textContent = `✓ ${liveProps.length.toLocaleString()} DC properties — live from DC Open Data`;
 
   } catch (err) {
-    console.error('Live data error:', err);
-    badge.textContent = 'Failed to load live data — check your internet connection and try reloading';
+    console.error('[DC GIS] Fatal fetch error:', err);
+    badge.textContent = `⚠ Could not load data — ${err.message}`;
+    propList.innerHTML = `
+      <div style="padding:1.5rem 1.4rem;color:var(--text-secondary);font-size:0.82rem;line-height:1.8">
+        <strong style="color:var(--accent)">Failed to load DC property data.</strong><br><br>
+        ${err.message}<br><br>
+        <strong>To diagnose:</strong> Open your browser's DevTools (F12 → Console tab) and look for <code>[DC GIS]</code> errors.
+        Common causes: network connection issue, or DC Open Data API temporarily down.<br><br>
+        <button onclick="liveDataLoaded=false;fetchLiveData()"
+          style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
+                 padding:0.5rem 1rem;border-radius:6px;cursor:pointer;font-size:0.8rem">
+          ↺ Retry
+        </button>
+      </div>`;
   }
 }
 

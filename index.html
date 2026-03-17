@@ -1781,67 +1781,59 @@ async function fetchLiveData() {
     return all;
   }
 
+  // ── Universal coordinate extractor — handles point x/y AND polygon rings ──
+  function getCoords(f) {
+    const g = f.geometry;
+    if (!g) return null;
+    // Point layer: geometry = { x: lng, y: lat }
+    if (typeof g.x === 'number' && typeof g.y === 'number' && g.x !== 0 && g.y !== 0) {
+      return { lat: g.y, lng: g.x };
+    }
+    // Polygon layer: geometry = { rings: [[[lng,lat], ...]] }
+    if (Array.isArray(g.rings) && g.rings.length > 0 && g.rings[0].length > 0) {
+      const c = polyCenter(g.rings);
+      if (c) return { lat: c.y, lng: c.x };
+    }
+    return null;
+  }
+
   try {
     let allFeatures = [];
-    let isPointLayer = false;
 
-    // ── Try Point layer first (fastest, most reliable) ──────────────────────
+    // ── Try Point layer first ────────────────────────────────────────────────
     try {
-      badge.textContent = 'Connecting to DC Open Data (CamaResPt point layer)…';
+      badge.textContent = 'Connecting to DC Open Data…';
       allFeatures = await fetchAllPages(POINT_URL, { returnGeometry: 'true' });
-      // Verify we actually got point geometry (x/y on first feature)
-      const first = allFeatures[0];
-      if (first && first.geometry && first.geometry.x !== undefined) {
-        isPointLayer = true;
-        console.log('[DC GIS] ✓ Point layer success. First feature geometry:', first.geometry);
-      } else {
-        console.warn('[DC GIS] Point layer returned no geometry, switching to polygon fallback. First feature:', first);
-        allFeatures = []; // reset so we fall through
-      }
+      // Log the geometry structure of the first few features for debugging
+      console.log('[DC GIS] Point layer raw count:', allFeatures.length);
+      if (allFeatures[0]) console.log('[DC GIS] Feature[0] geometry:', JSON.stringify(allFeatures[0].geometry));
+      if (allFeatures[1]) console.log('[DC GIS] Feature[1] geometry:', JSON.stringify(allFeatures[1].geometry));
     } catch (e1) {
       console.warn('[DC GIS] Point layer failed:', e1.message, '— trying polygon layer…');
     }
 
-    // ── Fall back to polygon layer if point layer failed ─────────────────────
+    // ── Fall back to polygon layer if needed ─────────────────────────────────
     if (allFeatures.length === 0) {
-      badge.textContent = 'Trying polygon layer with centroid calculation…';
-      allFeatures = await fetchAllPages(POLY_URL, {
-        returnGeometry: 'true',
-        maxAllowableOffset: '0.00005', // simplify polygons to reduce payload
-      });
-      isPointLayer = false;
-      console.log('[DC GIS] ✓ Polygon layer success. First feature:', allFeatures[0]);
+      badge.textContent = 'Trying fallback data source…';
+      allFeatures = await fetchAllPages(POLY_URL, { returnGeometry: 'true' });
+      console.log('[DC GIS] Polygon layer raw count:', allFeatures.length);
+      if (allFeatures[0]) console.log('[DC GIS] Poly Feature[0] geometry:', JSON.stringify(allFeatures[0].geometry));
     }
 
     if (allFeatures.length === 0) {
-      throw new Error('Both DC GIS endpoints returned 0 features. The API may be temporarily down.');
+      throw new Error('DC Open Data returned 0 features — the API may be temporarily down.');
     }
 
-    console.log(`[DC GIS] Raw features: ${allFeatures.length}, isPointLayer: ${isPointLayer}`);
+    // ── Transform features — getCoords() handles both point and polygon ───────
+    const afterBldg = allFeatures.filter(f => f.attributes.BLDG_NUM === 1 || !f.attributes.BLDG_NUM);
+    console.log(`[DC GIS] After BLDG_NUM filter: ${afterBldg.length} of ${allFeatures.length}`);
 
-    // ── Transform features to our property format ────────────────────────────
-    const liveProps = allFeatures
-      .filter(f => f.attributes.BLDG_NUM === 1 || !f.attributes.BLDG_NUM)
-      .filter(f => {
-        if (isPointLayer) {
-          return f.geometry && f.geometry.x !== undefined && f.geometry.y !== undefined
-                 && f.geometry.x !== 0 && f.geometry.y !== 0;
-        } else {
-          return f.geometry && f.geometry.rings && f.geometry.rings.length > 0;
-        }
-      })
+    const liveProps = afterBldg
       .map((f, i) => {
+        const coords = getCoords(f);
+        if (!coords) return null; // skip features with no usable geometry
+        const { lat, lng } = coords;
         const a = f.attributes;
-        let lat, lng;
-        if (isPointLayer) {
-          lat = f.geometry.y;
-          lng = f.geometry.x;
-        } else {
-          const c = polyCenter(f.geometry.rings);
-          if (!c) return null;
-          lat = c.y;
-          lng = c.x;
-        }
         const use = usecodeMap[a.USECODE] || 'Multifamily';
         const isVacant = [89, 91, 92].includes(a.USECODE);
         return {
@@ -1867,12 +1859,17 @@ async function fetchLiveData() {
           tax: 0,
         };
       })
-      .filter(Boolean); // remove any nulls from failed centroid calc
+      .filter(Boolean);
 
-    console.log(`[DC GIS] After filtering/mapping: ${liveProps.length} valid properties`);
+    console.log(`[DC GIS] Valid properties after getCoords filter: ${liveProps.length}`);
 
     if (liveProps.length === 0) {
-      throw new Error(`API returned ${allFeatures.length} raw records but 0 passed the geometry filter. Check console for details.`);
+      // Log the first 3 raw features so we can see exactly what geometry came back
+      allFeatures.slice(0, 3).forEach((f, i) => {
+        console.error(`[DC GIS] Raw feature[${i}] geometry:`, JSON.stringify(f.geometry));
+        console.error(`[DC GIS] Raw feature[${i}] attributes:`, JSON.stringify(f.attributes));
+      });
+      throw new Error(`API returned ${allFeatures.length} records but getCoords() returned null for all. See console for raw geometry structure.`);
     }
 
     // ── First render pass (CAMA data only, no owner info yet) ────────────────

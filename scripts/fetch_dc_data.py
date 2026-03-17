@@ -112,7 +112,6 @@ def build_url(base_url, offset):
         "where="            + urllib.parse.quote(WHERE, safe="")
         + "&outFields="     + urllib.parse.quote(FIELDS, safe="")
         + "&returnGeometry=true"
-        + "&outSR=4326"
         + "&resultRecordCount=" + str(PAGE_SIZE)
         + "&resultOffset="  + str(offset)
         + "&orderByFields=SSL+ASC"

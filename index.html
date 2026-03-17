@@ -415,34 +415,6 @@
     font-weight: 500;
   }
 
-  .ward-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-  }
-
-  .ward-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 500;
-    padding: 0.35rem 0;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: all 0.2s ease;
-    text-align: center;
-  }
-
-  .ward-btn:hover { color: var(--text-primary); border-color: rgba(196,163,90,0.3); }
-
-  .ward-btn.active {
-    background: var(--accent-dim);
-    border-color: var(--accent);
-    color: var(--accent);
-    font-weight: 600;
-  }
 
   .range-row {
     display: flex;
@@ -492,44 +464,6 @@
   }
 
   .type-select option { background: var(--bg-card); }
-
-  /* Live data button */
-  .live-data-btn {
-    margin: 1rem 1.4rem;
-    padding: 0.65rem 1rem;
-    background: var(--accent-dim);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    width: calc(100% - 2.8rem);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .live-data-btn:hover { background: rgba(196,163,90,0.25); }
-  .live-data-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .live-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--green);
-    border-radius: 50%;
-    animation: pulse-dot 2s ease infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
 
   /* Property list */
   .results-header {
@@ -599,13 +533,61 @@
   /* --- MAP AREA --- */
   .dash-map-area {
     flex: 1;
-    position: relative;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    position: relative;
   }
 
+  /* Persistent toolbar above map */
+  .map-toolbar {
+    height: 46px;
+    min-height: 46px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.2rem;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .toolbar-status {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 1rem;
+  }
+
+  .toolbar-export {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.35rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .toolbar-export:hover { background: rgba(196,163,90,0.25); }
+  .toolbar-export:disabled { opacity: 0.35; cursor: not-allowed; }
+
   #map {
-    width: 100%;
-    height: 100%;
+    flex: 1;
     background: #0a0d0a;
   }
 
@@ -652,21 +634,6 @@
   .ldot.yellow { background: var(--yellow); }
   .ldot.red { background: var(--red); }
 
-  .map-data-badge {
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(12, 15, 10, 0.9);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 0.35rem 1rem;
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    z-index: 50;
-    backdrop-filter: blur(10px);
-    letter-spacing: 0.06em;
-  }
 
   /* --- PROPERTY DETAIL PANEL --- */
   .prop-detail {
@@ -869,32 +836,6 @@
   .flag-tag.positive { border-color: rgba(76,175,125,0.4); color: var(--green); }
   .flag-tag.caution { border-color: rgba(212,160,23,0.4); color: var(--yellow); }
 
-  /* Export button */
-  .export-btn {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    z-index: 50;
-    background: rgba(12, 15, 10, 0.9);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    padding: 0.45rem 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .export-btn:hover { background: rgba(196,163,90,0.15); }
-  .export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .export-icon { font-size: 0.9rem; }
 
   /* Enhanced detail panel sections */
   .detail-section {
@@ -1173,22 +1114,6 @@
         </div>
       </div>
 
-      <!-- Ward filter -->
-      <div class="filter-group">
-        <div class="filter-label">Ward</div>
-        <div class="ward-grid" id="ward-filter">
-          <button class="ward-btn active" data-ward="all" onclick="setWard('all',this)">All</button>
-          <button class="ward-btn" data-ward="1" onclick="setWard('1',this)">W1</button>
-          <button class="ward-btn" data-ward="2" onclick="setWard('2',this)">W2</button>
-          <button class="ward-btn" data-ward="3" onclick="setWard('3',this)">W3</button>
-          <button class="ward-btn" data-ward="4" onclick="setWard('4',this)">W4</button>
-          <button class="ward-btn" data-ward="5" onclick="setWard('5',this)">W5</button>
-          <button class="ward-btn" data-ward="6" onclick="setWard('6',this)">W6</button>
-          <button class="ward-btn" data-ward="7" onclick="setWard('7',this)">W7</button>
-          <button class="ward-btn" data-ward="8" onclick="setWard('8',this)">W8</button>
-        </div>
-      </div>
-
       <!-- Min Units slider -->
       <div class="filter-group">
         <div class="filter-label">Min Units</div>
@@ -1218,12 +1143,6 @@
         </select>
       </div>
 
-      <!-- Live data button -->
-      <button class="live-data-btn" id="live-btn" onclick="fetchLiveData()">
-        <span class="live-dot"></span>
-        Fetching Live DC Data...
-      </button>
-
       <!-- Results list -->
       <div class="results-header">
         <span>Results</span>
@@ -1234,11 +1153,14 @@
 
     <!-- MAP AREA -->
     <div class="dash-map-area">
+      <!-- Persistent toolbar - always visible above the map -->
+      <div class="map-toolbar">
+        <span class="toolbar-status" id="data-badge">Connecting to DC Open Data...</span>
+        <button class="toolbar-export" id="export-btn" onclick="exportToExcel()" disabled title="Load data first to enable export">
+          &#8615;&nbsp; Export to Excel
+        </button>
+      </div>
       <div id="map"></div>
-      <button class="export-btn" onclick="exportToExcel()" id="export-btn" title="Export all filtered properties to Excel">
-        <span class="export-icon">&#8615;</span> Export to Excel
-      </button>
-      <div class="map-data-badge" id="data-badge">Loading live DC property data...</div>
       <div class="map-legend">
         <div class="legend-title">Investment Score</div>
         <div class="legend-item"><span class="ldot green"></span>Strong (70+)</div>
@@ -1310,174 +1232,12 @@ let filteredProperties = [];
 let map = null;
 let markers = {};
 let selectedId = null;
-let activeWard = 'all';
 let minUnits = 0;
 let minScore = 0;
 let activeType = 'all';
 let dashboardInited = false;
 let liveDataLoaded = false;
 
-// --- SAMPLE DATASET (25 properties across all 8 DC wards) ---
-const SAMPLE_DATA = [
-  // WARD 1
-  { id:'P001', address:'1423 Park Rd NW', ward:1, neighborhood:'Columbia Heights',
-    lat:38.9315, lng:-77.0294, num_units:8, stories:4, year_built:1940,
-    gba_sqft:7200, land_sqft:3800, sale_price:2400000, sale_date:'Aug 2021',
-    use_type:'Walk-Up Apartment', grade:'Good', zoning:'RA-2',
-    owner:'1423 Park LLC', assessment:2180000, tax:19620 },
-
-  { id:'P002', address:'2841 16th St NW', ward:1, neighborhood:'Columbia Heights',
-    lat:38.9342, lng:-77.0344, num_units:24, stories:6, year_built:1962,
-    gba_sqft:22000, land_sqft:7200, sale_price:7800000, sale_date:'Nov 2019',
-    use_type:'Elevator Apartment', grade:'Average', zoning:'RA-3',
-    owner:'Columbia Realty Partners', assessment:6950000, tax:62550 },
-
-  { id:'P003', address:'1701 Euclid St NW', ward:1, neighborhood:'Adams Morgan',
-    lat:38.9208, lng:-77.0356, num_units:4, stories:3, year_built:1910,
-    gba_sqft:3600, land_sqft:2200, sale_price:1600000, sale_date:'Mar 2022',
-    use_type:'Row House (3+ units)', grade:'Good', zoning:'RA-2',
-    owner:'Individual', assessment:1420000, tax:12780 },
-
-  // WARD 2
-  { id:'P004', address:'1745 N St NW', ward:2, neighborhood:'Dupont Circle',
-    lat:38.9103, lng:-77.0458, num_units:12, stories:5, year_built:1955,
-    gba_sqft:11000, land_sqft:4500, sale_price:5200000, sale_date:'Jun 2020',
-    use_type:'Elevator Apartment', grade:'Very Good', zoning:'RA-3',
-    owner:'NW Capital Holdings LLC', assessment:4800000, tax:43200 },
-
-  { id:'P005', address:'1516 P St NW', ward:2, neighborhood:'Logan Circle',
-    lat:38.9108, lng:-77.0383, num_units:6, stories:4, year_built:1918,
-    gba_sqft:5400, land_sqft:2800, sale_price:2100000, sale_date:'Jan 2023',
-    use_type:'Walk-Up Apartment', grade:'Good', zoning:'RA-2',
-    owner:'Logan Circle Properties LLC', assessment:1950000, tax:17550 },
-
-  { id:'P006', address:'1421 21st St NW', ward:2, neighborhood:'Dupont Circle',
-    lat:38.9089, lng:-77.0483, num_units:0, stories:0, year_built:null,
-    gba_sqft:0, land_sqft:2400, sale_price:1800000, sale_date:'Jul 2022',
-    use_type:'Vacant Lot', grade:'N/A', zoning:'RA-3',
-    owner:'21st Street Development LLC', assessment:1650000, tax:14850 },
-
-  // WARD 3
-  { id:'P007', address:'3620 Broad Branch Rd NW', ward:3, neighborhood:'Chevy Chase DC',
-    lat:38.9542, lng:-77.0664, num_units:2, stories:2, year_built:1935,
-    gba_sqft:2800, land_sqft:5600, sale_price:1100000, sale_date:'May 2021',
-    use_type:'Duplex', grade:'Very Good', zoning:'R-2',
-    owner:'Individual', assessment:980000, tax:8820 },
-
-  { id:'P008', address:'4200 Connecticut Ave NW', ward:3, neighborhood:'Cleveland Park',
-    lat:38.9431, lng:-77.0694, num_units:18, stories:6, year_built:1948,
-    gba_sqft:16500, land_sqft:6000, sale_price:5800000, sale_date:'Sep 2018',
-    use_type:'Elevator Apartment', grade:'Average', zoning:'RA-3',
-    owner:'Connecticut Ave Holdings LLC', assessment:5200000, tax:46800 },
-
-  // WARD 4
-  { id:'P009', address:'4215 Georgia Ave NW', ward:4, neighborhood:'Petworth',
-    lat:38.9367, lng:-77.0211, num_units:6, stories:3, year_built:1930,
-    gba_sqft:5200, land_sqft:3200, sale_price:1300000, sale_date:'Oct 2020',
-    use_type:'Walk-Up Apartment', grade:'Fair', zoning:'RA-2',
-    owner:'Georgia Ave Partners LLC', assessment:1150000, tax:10350 },
-
-  { id:'P010', address:'721 Jefferson St NW', ward:4, neighborhood:'Brightwood',
-    lat:38.9414, lng:-77.0256, num_units:4, stories:3, year_built:1920,
-    gba_sqft:3800, land_sqft:3000, sale_price:980000, sale_date:'Nov 2022',
-    use_type:'Row House (3+ units)', grade:'Good', zoning:'RA-1',
-    owner:'Jefferson Holdings LLC', assessment:890000, tax:8010 },
-
-  { id:'P011', address:'5108 New Hampshire Ave NW', ward:4, neighborhood:'16th St Heights',
-    lat:38.9492, lng:-77.0181, num_units:3, stories:3, year_built:1925,
-    gba_sqft:3000, land_sqft:2800, sale_price:820000, sale_date:'Apr 2023',
-    use_type:'Triplex', grade:'Average', zoning:'RA-1',
-    owner:'Individual', assessment:750000, tax:6750 },
-
-  // WARD 5
-  { id:'P012', address:'1234 Michigan Ave NE', ward:5, neighborhood:'Brookland',
-    lat:38.9331, lng:-76.9950, num_units:8, stories:3, year_built:1942,
-    gba_sqft:7000, land_sqft:4200, sale_price:1600000, sale_date:'Feb 2021',
-    use_type:'Walk-Up Apartment', grade:'Average', zoning:'RA-2',
-    owner:'Brookland Real Estate LLC', assessment:1450000, tax:13050 },
-
-  { id:'P013', address:'2108 Rhode Island Ave NE', ward:5, neighborhood:'Brentwood',
-    lat:38.9219, lng:-76.9858, num_units:0, stories:0, year_built:null,
-    gba_sqft:0, land_sqft:5800, sale_price:380000, sale_date:'Aug 2022',
-    use_type:'Vacant Lot', grade:'N/A', zoning:'RA-2',
-    owner:'Brentwood Development LLC', assessment:340000, tax:3060 },
-
-  { id:'P014', address:'3416 12th St NE', ward:5, neighborhood:'Carver Langston',
-    lat:38.9306, lng:-76.9892, num_units:4, stories:2, year_built:1927,
-    gba_sqft:3600, land_sqft:2400, sale_price:1100000, sale_date:'Sep 2021',
-    use_type:'Row House (3+ units)', grade:'Good', zoning:'RA-1',
-    owner:'12th Street Holdings LLC', assessment:1000000, tax:9000 },
-
-  // WARD 6
-  { id:'P015', address:'628 A St SE', ward:6, neighborhood:'Capitol Hill',
-    lat:38.8842, lng:-76.9947, num_units:2, stories:3, year_built:1890,
-    gba_sqft:2200, land_sqft:1800, sale_price:1200000, sale_date:'Feb 2023',
-    use_type:'Duplex/Conversion', grade:'Very Good', zoning:'RA-1',
-    owner:'Individual', assessment:1100000, tax:9900 },
-
-  { id:'P016', address:'1112 Maryland Ave NE', ward:6, neighborhood:'Capitol Hill',
-    lat:38.8942, lng:-76.9953, num_units:6, stories:4, year_built:1920,
-    gba_sqft:5400, land_sqft:2600, sale_price:1900000, sale_date:'May 2020',
-    use_type:'Walk-Up Apartment', grade:'Good', zoning:'RA-2',
-    owner:'Capitol Hill Properties LLC', assessment:1750000, tax:15750 },
-
-  { id:'P017', address:'300 11th St SE', ward:6, neighborhood:'Hill East',
-    lat:38.8800, lng:-76.9864, num_units:4, stories:3, year_built:1900,
-    gba_sqft:3400, land_sqft:2000, sale_price:1400000, sale_date:'Jun 2022',
-    use_type:'Row House (3+ units)', grade:'Very Good', zoning:'RA-1',
-    owner:'Hill East LLC', assessment:1280000, tax:11520 },
-
-  // WARD 7
-  { id:'P018', address:'4512 Benning Rd SE', ward:7, neighborhood:'Deanwood',
-    lat:38.8919, lng:-76.9439, num_units:4, stories:2, year_built:1955,
-    gba_sqft:3800, land_sqft:4500, sale_price:620000, sale_date:'Nov 2021',
-    use_type:'Row House (3+ units)', grade:'Fair', zoning:'RA-1',
-    owner:'Benning Road Holdings LLC', assessment:560000, tax:5040 },
-
-  { id:'P019', address:'548 Ridge Rd SE', ward:7, neighborhood:'Deanwood',
-    lat:38.8850, lng:-76.9400, num_units:0, stories:0, year_built:null,
-    gba_sqft:0, land_sqft:8200, sale_price:180000, sale_date:'Jan 2023',
-    use_type:'Vacant Lot', grade:'N/A', zoning:'RA-1',
-    owner:'Ridge Road Development LLC', assessment:165000, tax:1485 },
-
-  { id:'P020', address:'4208 E Capitol St NE', ward:7, neighborhood:'Capitol Heights',
-    lat:38.8933, lng:-76.9428, num_units:3, stories:2, year_built:1948,
-    gba_sqft:2800, land_sqft:3200, sale_price:520000, sale_date:'Apr 2022',
-    use_type:'Triplex', grade:'Average', zoning:'RF-1',
-    owner:'Individual', assessment:475000, tax:4275 },
-
-  // WARD 8
-  { id:'P021', address:'2716 Martin Luther King Jr Ave SE', ward:8, neighborhood:'Anacostia',
-    lat:38.8467, lng:-76.9894, num_units:8, stories:3, year_built:1950,
-    gba_sqft:7200, land_sqft:4200, sale_price:840000, sale_date:'Jul 2020',
-    use_type:'Walk-Up Apartment', grade:'Fair', zoning:'RA-2',
-    owner:'MLK Properties LLC', assessment:760000, tax:6840 },
-
-  { id:'P022', address:'1416 Good Hope Rd SE', ward:8, neighborhood:'Congress Heights',
-    lat:38.8619, lng:-76.9947, num_units:3, stories:2, year_built:1940,
-    gba_sqft:2600, land_sqft:3000, sale_price:410000, sale_date:'Dec 2021',
-    use_type:'Triplex', grade:'Average', zoning:'RA-1',
-    owner:'Good Hope LLC', assessment:375000, tax:3375 },
-
-  { id:'P023', address:'1800 Pomeroy Rd SE', ward:8, neighborhood:'Congress Heights',
-    lat:38.8542, lng:-76.9875, num_units:0, stories:0, year_built:null,
-    gba_sqft:0, land_sqft:6000, sale_price:150000, sale_date:'Sep 2022',
-    use_type:'Vacant Lot', grade:'N/A', zoning:'RA-2',
-    owner:'Pomeroy Development LLC', assessment:135000, tax:1215 },
-
-  // MIXED USE / ADDITIONAL
-  { id:'P024', address:'917 G St NW', ward:2, neighborhood:'Mt. Vernon Square',
-    lat:38.8981, lng:-77.0231, num_units:6, stories:5, year_built:1905,
-    gba_sqft:5800, land_sqft:2200, sale_price:3200000, sale_date:'May 2022',
-    use_type:'Mixed Use', grade:'Good', zoning:'MU-4',
-    owner:'G Street Capital LLC', assessment:2950000, tax:26550 },
-
-  { id:'P025', address:'2024 Bladensburg Rd NE', ward:5, neighborhood:'Brentwood',
-    lat:38.9217, lng:-76.9817, num_units:12, stories:4, year_built:1958,
-    gba_sqft:10500, land_sqft:6800, sale_price:2100000, sale_date:'Aug 2019',
-    use_type:'Walk-Up Apartment', grade:'Average', zoning:'RA-2',
-    owner:'Bladensburg Holdings LLC', assessment:1880000, tax:16920 },
-];
 
 // Metro stations for proximity scoring
 const METRO_STATIONS = [
@@ -1838,13 +1598,6 @@ function closeDetail() {
 }
 
 // --- FILTER CONTROLS ---
-function setWard(ward, btn) {
-  activeWard = ward;
-  document.querySelectorAll('.ward-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-
 function setUnits(val) {
   minUnits = parseInt(val);
   document.getElementById('units-val').textContent = val == 0 ? 'Any' : val + '+';
@@ -1861,7 +1614,6 @@ function applyFilters() {
   activeType = document.getElementById('type-select').value;
 
   filteredProperties = allProperties.filter(p => {
-    if (activeWard !== 'all' && p.ward !== parseInt(activeWard)) return false;
     if (minUnits > 0 && p.num_units < minUnits) return false;
     if (p.score.composite < minScore) return false;
     if (activeType === 'multifamily' && p.use_type === 'Vacant Lot') return false;
@@ -1919,28 +1671,12 @@ function updateStats(properties) {
   document.getElementById('stat-vacant').textContent = vacantCount;
 }
 
-// --- LOAD SAMPLE DATA ---
-function loadSampleData() {
-  allProperties = SAMPLE_DATA.map(p => ({ ...p, score: computeScore(p) }));
-  filteredProperties = [...allProperties];
-  renderMarkers(filteredProperties);
-  renderList(filteredProperties);
-  updateStats(filteredProperties);
-
-  // Hide loading overlay
-  const loading = document.getElementById('dash-loading');
-  loading.classList.add('hidden');
-  setTimeout(() => { loading.style.display = 'none'; }, 500);
-}
-
 // --- LIVE DATA FETCH (paginated — pulls ALL matching properties) ---
 async function fetchLiveData() {
   if (liveDataLoaded) return;
 
-  const btn = document.getElementById('live-btn');
   const badge = document.getElementById('data-badge');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="loading-spinner" style="width:14px;height:14px;border-width:2px;margin:0"></div> Fetching DC Data...';
+  const exportBtn = document.getElementById('export-btn');
   badge.textContent = 'Connecting to DC Open Data...';
 
   const BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query';
@@ -1966,7 +1702,8 @@ async function fetchLiveData() {
       const params = new URLSearchParams({
         where: 'NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)',
         outFields: 'SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM',
-        returnGeometry: 'true',
+        returnGeometry: 'false',
+        returnCentroid: 'true',
         outSR: '4326',
         resultRecordCount: PAGE_SIZE.toString(),
         resultOffset: offset.toString(),
@@ -1997,7 +1734,7 @@ async function fetchLiveData() {
     // Transform to our property format
     const liveProps = allFeatures
       .filter(f => f.attributes.BLDG_NUM === 1 || !f.attributes.BLDG_NUM)
-      .filter(f => f.geometry && f.geometry.x && f.geometry.y)
+      .filter(f => f.centroid && f.centroid.x && f.centroid.y)
       .map((f, i) => {
         const a = f.attributes;
         const use = usecodeMap[a.USECODE] || 'Multifamily';
@@ -2008,8 +1745,8 @@ async function fetchLiveData() {
           address: a.SSL ? 'SSL: ' + a.SSL : 'DC Property',
           ward: 0,
           neighborhood: 'DC',
-          lat: f.geometry.y,
-          lng: f.geometry.x,
+          lat: f.centroid.y,
+          lng: f.centroid.x,
           num_units: a.NUM_UNITS || 0,
           stories: a.STORIES || 0,
           year_built: a.AYB || null,
@@ -2032,11 +1769,8 @@ async function fetchLiveData() {
     filteredProperties = [...allProperties];
 
     // Reset filters
-    activeWard = 'all';
     minUnits = 0;
     minScore = 0;
-    document.querySelectorAll('.ward-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.ward-btn[data-ward="all"]').classList.add('active');
     document.getElementById('units-slider').value = 0;
     document.getElementById('score-slider').value = 0;
     document.getElementById('units-val').textContent = 'Any';
@@ -2049,7 +1783,8 @@ async function fetchLiveData() {
     closeDetail();
 
     liveDataLoaded = true;
-    badge.textContent = `${liveProps.length.toLocaleString()} properties loaded — now fetching owner data...`;
+    exportBtn.disabled = false;
+    badge.textContent = `${liveProps.length.toLocaleString()} properties loaded — fetching owner & address data...`;
 
     // Second pass: enrich with Tax Extract (owner, address, ward, zoning)
     try {
@@ -2064,17 +1799,11 @@ async function fetchLiveData() {
       console.warn('Tax enrichment failed, proceeding with CAMA data only:', e);
     }
 
-    badge.textContent = `Live DC Data — ${liveProps.length.toLocaleString()} properties with owner info from DC Open Data`;
-    btn.innerHTML = '✓ ' + liveProps.length.toLocaleString() + ' Properties Loaded';
-    btn.style.borderColor = 'var(--green)';
-    btn.style.color = 'var(--green)';
-    btn.style.background = 'rgba(76,175,125,0.1)';
+    badge.textContent = `✓ ${liveProps.length.toLocaleString()} DC properties — live from DC Open Data`;
 
   } catch (err) {
     console.error('Live data error:', err);
-    btn.disabled = false;
-    btn.innerHTML = '<span class="live-dot"></span> Retry Live Data';
-    badge.textContent = 'Showing sample data — live fetch failed (click Retry or check console)';
+    badge.textContent = 'Failed to load live data — check your internet connection and try reloading';
   }
 }
 
@@ -2218,8 +1947,14 @@ function initDashboard() {
 
   setTimeout(() => {
     initMap();
-    loadSampleData();
-    // Auto-fetch live data immediately after sample data loads
+    // Hide the loading overlay — map is ready, data fetches in background
+    const loading = document.getElementById('dash-loading');
+    loading.classList.add('hidden');
+    setTimeout(() => { loading.style.display = 'none'; }, 500);
+    // Show empty state in list while data loads
+    document.getElementById('prop-list').innerHTML =
+      '<div style="padding:1.5rem 1.4rem;color:var(--text-secondary);font-size:0.82rem;line-height:1.6">Loading DC property data from DC Open Data...<br><br>This may take 15–30 seconds for the full dataset.</div>';
+    // Fetch live data immediately
     fetchLiveData();
   }, 100);
 }

@@ -1671,7 +1671,7 @@ function updateStats(properties) {
   document.getElementById('stat-vacant').textContent = vacantCount;
 }
 
-// --- LIVE DATA FETCH (paginated — pulls ALL matching properties) ---
+// --- DATA LOADING ---
 
 // Compute the centroid of a polygon from its ring coordinates (fallback for polygon layers)
 function polyCenter(rings) {
@@ -1682,13 +1682,55 @@ function polyCenter(rings) {
   return { x: x / ring.length, y: y / ring.length };
 }
 
+// Render properties that came from the static JSON (pre-processed by fetch_dc_data.py)
+function renderStaticData(props) {
+  allProperties = props.map(p => ({
+    ...p,
+    score: p.score || computeScore(p),
+  }));
+  filteredProperties = [...allProperties];
+  minUnits = 0; minScore = 0;
+  document.getElementById('units-slider').value = 0;
+  document.getElementById('score-slider').value = 0;
+  document.getElementById('units-val').textContent = 'Any';
+  document.getElementById('score-val').textContent = '0';
+  document.getElementById('type-select').value = 'all';
+  renderMarkers(filteredProperties);
+  renderList(filteredProperties);
+  updateStats(filteredProperties);
+  closeDetail();
+}
+
 async function fetchLiveData() {
   if (liveDataLoaded) return;
 
   const badge = document.getElementById('data-badge');
   const exportBtn = document.getElementById('export-btn');
   const propList = document.getElementById('prop-list');
-  badge.textContent = 'Connecting to DC Open Data...';
+
+  // ── PRIMARY PATH: Load pre-fetched static JSON (works in all browsers, no CORS) ──
+  try {
+    badge.textContent = 'Loading property data…';
+    const resp = await fetch('data/properties.json');
+    if (resp.ok) {
+      const json = await resp.json();
+      const props = json.properties || [];
+      if (props.length > 0) {
+        renderStaticData(props);
+        liveDataLoaded = true;
+        exportBtn.disabled = false;
+        const updated = json.updated ? ` · updated ${json.updated.slice(0,10)}` : '';
+        badge.textContent = `✓ ${props.length.toLocaleString()} DC properties${updated}`;
+        console.log(`[Dashboard] Loaded ${props.length} properties from static data file`);
+        return; // done — no need for live API
+      }
+    }
+  } catch (e) {
+    console.log('[Dashboard] Static data/properties.json not available — trying live API…', e.message);
+  }
+
+  // ── FALLBACK PATH: Live DC GIS API (may be blocked by tracking prevention) ──
+  badge.textContent = 'Connecting to DC Open Data (live)…';
 
   // ENDPOINT A: CamaResPt — native POINT layer (geometry.x / geometry.y work directly)
   const POINT_URL = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query';

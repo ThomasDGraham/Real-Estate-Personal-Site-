@@ -39,7 +39,8 @@ CAMA_FIELDS = ",".join([
 ])
 
 # Fields to pull from Tax Extract (MapServer/53) for enrichment
-TAX_FIELDS = "SSL,PREMISEADD,WARD,ASSESSMENT,OWNERNAME"
+# Note: ward is PRMS_WARD on this layer (not WARD)
+TAX_FIELDS = "SSL,PREMISEADD,PRMS_WARD,ASSESSMENT,OWNERNAME"
 
 # Primary: CAMA Polygon layer (MapServer/25)
 POLY_URL  = ("https://maps2.dcgis.dc.gov/dcgis/rest/services/"
@@ -85,6 +86,14 @@ def build_url(base_url, fields, offset):
         + "&f=json"
     )
     return base_url + "?" + qs
+
+
+def normalize_ssl(ssl):
+    """Normalize SSL: collapse internal whitespace to single spaces, strip."""
+    if not ssl:
+        return ""
+    import re
+    return re.sub(r'\s+', ' ', ssl.strip())
 
 
 def attr(feature, *keys):
@@ -190,6 +199,7 @@ def enrich_from_tax(properties):
     batch_size = 50
 
     print(f"  Querying Tax Extract for {len(ssl_list)} SSLs in batches of {batch_size}...")
+    print(f"  Sample CAMA SSLs: {ssl_list[:3]}")
 
     for i in range(0, len(ssl_list), batch_size):
         batch = ssl_list[i:i+batch_size]
@@ -207,6 +217,20 @@ def enrich_from_tax(properties):
 
         try:
             data = fetch_json(url)
+
+            # Debug: show first batch response
+            if i == 0:
+                feats_debug = data.get("features", [])
+                if feats_debug:
+                    sample = feats_debug[0].get("attributes") or feats_debug[0].get("properties") or {}
+                    print(f"  Tax Extract sample SSL: '{sample.get('SSL')}'")
+                    print(f"  Tax Extract sample fields: {list(sample.keys())}")
+                elif "error" in data:
+                    print(f"  Tax Extract error: {data['error']}")
+                else:
+                    print(f"  Tax Extract returned 0 features for first batch")
+                    print(f"  First batch WHERE: {where[:200]}")
+
             feats = data.get("features", [])
             for f in feats:
                 a = f.get("attributes") or f.get("properties") or {}
@@ -216,7 +240,7 @@ def enrich_from_tax(properties):
 
                 p = ssl_map[ssl]
                 addr  = (a.get("PREMISEADD") or "").strip()
-                ward  = a.get("WARD")
+                ward  = a.get("PRMS_WARD")
                 asmnt = a.get("ASSESSMENT")
                 owner = (a.get("OWNERNAME") or "").strip()
 

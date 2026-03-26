@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Thomas | Real Estate & Development</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
   :root {
@@ -301,645 +299,116 @@
   }
 
   /* ===================== DASHBOARD PAGE ===================== */
-  #dashboard.page {
-    padding-top: 0;
-    min-height: unset;
-    overflow: hidden;
-  }
+  #dashboard.page { min-height: 100vh; }
+  #dashboard.active { display: flex; flex-direction: column; }
 
-  #dashboard.active {
-    position: fixed;
-    top: var(--nav-h);
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    animation: none;
-  }
-
-  .dash-wrapper {
-    display: flex;
-    height: 100%;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* --- SIDEBAR --- */
-  .dash-sidebar {
-    width: 290px;
-    min-width: 290px;
-    height: 100%;
-    overflow-y: auto;
-    background: var(--bg-secondary);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    z-index: 10;
-  }
-
-  .dash-sidebar::-webkit-scrollbar { width: 4px; }
-  .dash-sidebar::-webkit-scrollbar-track { background: transparent; }
-  .dash-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .sidebar-head {
-    padding: 1.2rem 1.4rem 1rem;
-    border-bottom: 1px solid var(--border);
+  .dash-toolbar {
     position: sticky;
-    top: 0;
-    background: var(--bg-secondary);
-    z-index: 1;
-  }
-
-  .sidebar-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-    margin-bottom: 0.3rem;
-  }
-
-  .sidebar-subtitle {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  /* Stats row */
-  .sidebar-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .ss-item {
-    padding: 0.9rem 0.7rem;
-    text-align: center;
-    border-right: 1px solid var(--border);
-  }
-
-  .ss-item:last-child { border-right: none; }
-
-  .ss-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-  }
-
-  .ss-label {
-    font-size: 0.62rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-top: 0.15rem;
-    display: block;
-  }
-
-  /* Filters */
-  .filter-group {
-    padding: 1rem 1.4rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .filter-label {
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 0.6rem;
-    font-weight: 500;
-  }
-
-
-  .range-row {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .range-val {
-    font-size: 0.82rem;
-    color: var(--accent);
-    font-weight: 600;
-    min-width: 32px;
-    text-align: right;
-  }
-
-  input[type="range"] {
-    flex: 1;
-    -webkit-appearance: none;
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  .type-select {
-    width: 100%;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.82rem;
-    padding: 0.5rem 0.7rem;
-    border-radius: 6px;
-    cursor: pointer;
-    outline: none;
-    appearance: none;
-  }
-
-  .type-select option { background: var(--bg-card); }
-
-  /* Property list */
-  .results-header {
-    padding: 0.8rem 1.4rem 0.4rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .results-count {
-    font-size: 0.82rem;
-    color: var(--accent);
-    font-weight: 600;
-  }
-
-  .prop-list { flex: 1; }
-
-  .prop-row {
-    padding: 0.85rem 1.4rem;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.15s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-  }
-
-  .prop-row:hover { background: var(--bg-card); }
-  .prop-row.selected { background: var(--accent-dim); border-left: 2px solid var(--accent); }
-
-  .prop-score-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .prop-row-info { flex: 1; min-width: 0; }
-
-  .prop-row-addr {
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .prop-row-meta {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    margin-top: 0.1rem;
-  }
-
-  .prop-row-score {
-    font-size: 0.8rem;
-    font-weight: 700;
-    min-width: 28px;
-    text-align: right;
-  }
-
-  /* --- MAP AREA --- */
-  .dash-map-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* Persistent toolbar above map */
-  .map-toolbar {
-    height: 46px;
-    min-height: 46px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    top: var(--nav-h);
+    z-index: 50;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1.2rem;
-    z-index: 10;
-    flex-shrink: 0;
+    padding: 0.8rem 2rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
   }
 
-  .toolbar-status {
-    font-size: 0.73rem;
+  .dash-status {
+    font-size: 0.82rem;
     color: var(--text-secondary);
     letter-spacing: 0.04em;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-right: 1rem;
   }
 
-  .toolbar-export {
+  .dash-status span { color: var(--accent); font-weight: 600; }
+
+  .dash-export {
     background: var(--accent-dim);
     border: 1px solid var(--accent);
     color: var(--accent);
     font-family: 'DM Sans', sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.06em;
-    padding: 0.35rem 1rem;
+    padding: 0.45rem 1.2rem;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
+    transition: background 0.2s ease;
   }
 
-  .toolbar-export:hover { background: rgba(196,163,90,0.25); }
-  .toolbar-export:disabled { opacity: 0.35; cursor: not-allowed; }
+  .dash-export:hover { background: rgba(196,163,90,0.25); }
+  .dash-export:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  #map {
+  .dash-table-wrap {
     flex: 1;
-    background: #0a0d0a;
+    overflow: auto;
+    padding: 0 1rem 2rem;
   }
 
-  .map-legend {
-    position: absolute;
-    bottom: 28px;
-    left: 16px;
-    background: rgba(12, 15, 10, 0.9);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.7rem 1rem;
-    z-index: 50;
-    backdrop-filter: blur(10px);
+  .dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 0.5rem;
   }
 
-  .legend-title {
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-  }
+  .dash-table thead { position: sticky; top: 0; z-index: 5; }
 
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.3rem;
-  }
-
-  .legend-item:last-child { margin-bottom: 0; }
-
-  .ldot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .ldot.green { background: var(--green); }
-  .ldot.yellow { background: var(--yellow); }
-  .ldot.red { background: var(--red); }
-
-
-  /* --- PROPERTY DETAIL PANEL --- */
-  .prop-detail {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 360px;
-    height: 100%;
+  .dash-table th {
     background: var(--bg-secondary);
-    border-left: 1px solid var(--border);
-    z-index: 100;
-    overflow-y: auto;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .prop-detail.open { transform: translateX(0); }
-
-  .prop-detail::-webkit-scrollbar { width: 4px; }
-  .prop-detail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  .detail-header {
-    padding: 1.2rem 1.4rem;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    background: var(--bg-secondary);
-    z-index: 1;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-  }
-
-  .detail-close {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-radius: 6px;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-    transition: all 0.2s ease;
-    margin-left: 0.5rem;
-  }
-
-  .detail-close:hover { color: var(--text-primary); border-color: rgba(196,163,90,0.3); }
-
-  .detail-addr {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.05rem;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-
-  .detail-location {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-top: 0.25rem;
-    letter-spacing: 0.04em;
-  }
-
-  /* Score section */
-  .detail-score-section {
-    padding: 1.2rem 1.4rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .score-main {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .score-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.5rem;
-    font-weight: 700;
-    border: 2px solid;
-  }
-
-  .score-circle.green { color: var(--green); border-color: var(--green); background: rgba(76,175,125,0.1); }
-  .score-circle.yellow { color: var(--yellow); border-color: var(--yellow); background: rgba(212,160,23,0.1); }
-  .score-circle.red { color: var(--red); border-color: var(--red); background: rgba(192,57,43,0.1); }
-
-  .score-label-group { flex: 1; }
-
-  .score-rating {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 0.2rem;
-  }
-
-  .score-rating.green { color: var(--green); }
-  .score-rating.yellow { color: var(--yellow); }
-  .score-rating.red { color: var(--red); }
-
-  .score-sub { font-size: 0.78rem; color: var(--text-secondary); }
-
-  .score-factors { display: flex; flex-direction: column; gap: 0.5rem; }
-
-  .factor-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.75rem; }
-
-  .factor-name { color: var(--text-secondary); width: 90px; flex-shrink: 0; }
-
-  .factor-bar-bg {
-    flex: 1;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .factor-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: var(--accent);
-    transition: width 0.6s ease;
-  }
-
-  .factor-score { color: var(--accent); font-weight: 600; min-width: 24px; text-align: right; }
-
-  /* Details grid */
-  .detail-body { padding: 1.2rem 1.4rem; }
-
-  .detail-type-tag {
-    display: inline-block;
-    padding: 0.3rem 0.8rem;
-    background: var(--accent-dim);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 0.72rem;
     color: var(--accent);
-    letter-spacing: 0.05em;
-    margin-bottom: 1rem;
-  }
-
-  .detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 1.2rem;
-  }
-
-  .dg-cell {
-    background: var(--bg-card);
-    padding: 0.8rem 0.9rem;
-  }
-
-  .dg-label {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
+    font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 0.25rem;
-    display: block;
+    text-align: left;
+    padding: 0.7rem 0.8rem;
+    border-bottom: 2px solid var(--accent);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.2s ease;
   }
 
-  .dg-val {
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    display: block;
+  .dash-table th:hover { color: var(--text-primary); }
+
+  .dash-table th .sort-arrow {
+    display: inline-block;
+    margin-left: 0.3rem;
+    font-size: 0.6rem;
+    opacity: 0.4;
   }
 
-  .dg-val.highlight { color: var(--accent); font-weight: 600; }
+  .dash-table th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
 
-  .detail-flags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-  }
-
-  .flag-tag {
-    padding: 0.25rem 0.65rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-  }
-
-  .flag-tag.positive { border-color: rgba(76,175,125,0.4); color: var(--green); }
-  .flag-tag.caution { border-color: rgba(212,160,23,0.4); color: var(--yellow); }
-
-
-  /* Enhanced detail panel sections */
-  .detail-section {
-    padding: 1rem 1.4rem;
+  .dash-table td {
+    padding: 0.6rem 0.8rem;
     border-bottom: 1px solid var(--border);
-  }
-
-  .detail-section-title {
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 0.8rem;
-    font-weight: 600;
-  }
-
-  .factor-explain {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-    margin-top: 0.2rem;
-    font-weight: 300;
-  }
-
-  .factor-row-enhanced {
-    margin-bottom: 0.8rem;
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid rgba(196,163,90,0.06);
-  }
-
-  .factor-row-enhanced:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-
-  .factor-top { display: flex; align-items: center; gap: 0.6rem; font-size: 0.78rem; }
-  .factor-weight { font-size: 0.65rem; color: var(--text-secondary); font-weight: 400; }
-
-  .owner-section { display: flex; flex-direction: column; gap: 0.5rem; }
-
-  .owner-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .owner-label {
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    padding-top: 0.1rem;
-  }
-
-  .owner-val {
-    font-size: 0.85rem;
     color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .dash-table tbody tr { transition: background 0.15s ease; }
+  .dash-table tbody tr:hover { background: var(--bg-card); }
+
+  .dash-table td.num {
     text-align: right;
-    word-break: break-word;
+    font-variant-numeric: tabular-nums;
   }
 
-  .scoring-note {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-    font-weight: 300;
-    font-style: italic;
-    padding: 0.6rem 0 0;
-  }
-
-  .nearest-metro {
+  .dash-loading-msg {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.7rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.78rem;
-    margin-top: 0.4rem;
-  }
-
-  .metro-icon { font-size: 1rem; }
-  .metro-name { color: var(--text-primary); flex: 1; }
-  .metro-dist { color: var(--accent); font-weight: 600; }
-
-  /* Loading overlay */
-  .dash-loading {
-    position: absolute;
-    inset: 0;
-    background: var(--bg-primary);
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 999;
-    gap: 1rem;
-    transition: opacity 0.5s ease;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    gap: 0.8rem;
   }
 
-  .dash-loading.hidden { opacity: 0; pointer-events: none; }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
+  .dash-spinner {
+    width: 24px;
+    height: 24px;
     border: 2px solid var(--border);
     border-top-color: var(--accent);
     border-radius: 50%;
@@ -947,13 +416,6 @@
   }
 
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .loading-text {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
 
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 900px) {
@@ -963,17 +425,9 @@
     .about-page { padding: 4rem 2rem; }
     .about-grid { grid-template-columns: 1fr; }
     .hero-stats { gap: 2rem; flex-wrap: wrap; }
-    .dash-sidebar { width: 240px; min-width: 240px; }
-    .prop-detail { width: 300px; }
-  }
-
-  /* Leaflet overrides */
-  .leaflet-control-attribution { background: rgba(12,15,10,0.8) !important; color: #6b7068 !important; font-size: 10px !important; }
-  .leaflet-control-attribution a { color: #9CA396 !important; }
-  .leaflet-control-zoom a {
-    background: #1A1F1A !important;
-    color: var(--accent) !important;
-    border-color: var(--border) !important;
+    .dash-toolbar { padding: 0.8rem 1rem; }
+    .dash-table { font-size: 0.75rem; }
+    .dash-table th, .dash-table td { padding: 0.5rem 0.5rem; }
   }
 </style>
 </head>
@@ -1083,1026 +537,52 @@
 
 <!-- ==================== DASHBOARD PAGE ==================== -->
 <div id="dashboard" class="page">
-  <div class="dash-wrapper">
 
-    <!-- Loading overlay -->
-    <div class="dash-loading" id="dash-loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Initializing Dashboard</div>
+  <!-- Toolbar -->
+  <div class="dash-toolbar">
+    <div class="dash-status" id="dash-status">Loading property data...</div>
+    <button class="dash-export" id="export-btn" onclick="exportToExcel()" disabled>Export to Excel</button>
+  </div>
+
+  <!-- Table -->
+  <div class="dash-table-wrap">
+    <div class="dash-loading-msg" id="dash-loading">
+      <div class="dash-spinner"></div>
+      Loading DC multifamily properties...
     </div>
+    <table class="dash-table" id="dash-table" style="display:none">
+      <thead>
+        <tr>
+          <th data-key="address"   data-type="string">Address    <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="ward"      data-type="string">Ward       <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="units"     data-type="number">Units      <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="assessed"  data-type="number">Assessed Value <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="landArea"  data-type="number">Land Area  <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="bldgArea"  data-type="number">Bldg Area  <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="condGrade" data-type="string">Condition/Grade <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="useCode"   data-type="string">Use Code   <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="yearBuilt" data-type="number">Year Built <span class="sort-arrow">&#9650;</span></th>
+          <th data-key="owner"     data-type="string">Owner      <span class="sort-arrow">&#9650;</span></th>
+        </tr>
+      </thead>
+      <tbody id="dash-tbody"></tbody>
+    </table>
+  </div>
 
-    <!-- LEFT SIDEBAR -->
-    <div class="dash-sidebar">
-      <div class="sidebar-head">
-        <div class="sidebar-title">DC Multifamily Scout</div>
-        <div class="sidebar-subtitle">Deal Sourcing Dashboard</div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="sidebar-stats">
-        <div class="ss-item">
-          <span class="ss-num" id="stat-count">—</span>
-          <span class="ss-label">Properties</span>
-        </div>
-        <div class="ss-item">
-          <span class="ss-num" id="stat-ppu">—</span>
-          <span class="ss-label">Avg $/Unit</span>
-        </div>
-        <div class="ss-item">
-          <span class="ss-num" id="stat-vacant">—</span>
-          <span class="ss-label">Vacant</span>
-        </div>
-      </div>
-
-      <!-- Min Units slider -->
-      <div class="filter-group">
-        <div class="filter-label">Min Units</div>
-        <div class="range-row">
-          <input type="range" id="units-slider" min="0" max="30" value="0" oninput="setUnits(this.value)">
-          <span class="range-val" id="units-val">Any</span>
-        </div>
-      </div>
-
-      <!-- Min Score slider -->
-      <div class="filter-group">
-        <div class="filter-label">Min Score</div>
-        <div class="range-row">
-          <input type="range" id="score-slider" min="0" max="90" value="0" oninput="setScore(this.value)">
-          <span class="range-val" id="score-val">0</span>
-        </div>
-      </div>
-
-      <!-- Property type -->
-      <div class="filter-group">
-        <div class="filter-label">Property Type</div>
-        <select class="type-select" id="type-select" onchange="applyFilters()">
-          <option value="all">All Types</option>
-          <option value="multifamily">Multifamily</option>
-          <option value="vacant">Vacant Lots</option>
-          <option value="mixed">Mixed Use</option>
-        </select>
-      </div>
-
-      <!-- Results list -->
-      <div class="results-header">
-        <span>Results</span>
-        <span class="results-count" id="results-count">0</span>
-      </div>
-      <div class="prop-list" id="prop-list"></div>
-    </div>
-
-    <!-- MAP AREA -->
-    <div class="dash-map-area">
-      <!-- Persistent toolbar - always visible above the map -->
-      <div class="map-toolbar">
-        <span class="toolbar-status" id="data-badge">Connecting to DC Open Data...</span>
-        <button class="toolbar-export" id="export-btn" onclick="exportToExcel()" disabled title="Load data first to enable export">
-          &#8615;&nbsp; Export to Excel
-        </button>
-      </div>
-      <div id="map"></div>
-      <div class="map-legend">
-        <div class="legend-title">Investment Score</div>
-        <div class="legend-item"><span class="ldot green"></span>Strong (70+)</div>
-        <div class="legend-item"><span class="ldot yellow"></span>Moderate (40–69)</div>
-        <div class="legend-item"><span class="ldot red"></span>Weak (&lt;40)</div>
-      </div>
-    </div>
-
-    <!-- PROPERTY DETAIL PANEL -->
-    <div class="prop-detail" id="prop-detail">
-      <div class="detail-header">
-        <div>
-          <div class="detail-addr" id="d-addr">—</div>
-          <div class="detail-location" id="d-loc">—</div>
-        </div>
-        <button class="detail-close" onclick="closeDetail()">✕</button>
-      </div>
-
-      <!-- SCORE SECTION with explanations -->
-      <div class="detail-section">
-        <div class="score-main">
-          <div class="score-circle" id="d-score-circle">—</div>
-          <div class="score-label-group">
-            <div class="score-rating" id="d-score-rating">—</div>
-            <div class="score-sub">Composite investment score (0–100)</div>
-          </div>
-        </div>
-        <div id="d-factors"></div>
-        <div class="scoring-note">Score = weighted average of four factors. Higher is more attractive for acquisition.</div>
-      </div>
-
-      <!-- PROPERTY DETAILS -->
-      <div class="detail-section">
-        <div class="detail-section-title">Property Details</div>
-        <div class="detail-type-tag" id="d-type">—</div>
-        <div class="detail-grid" id="d-grid"></div>
-      </div>
-
-      <!-- OWNER & CONTACT -->
-      <div class="detail-section" id="d-owner-section" style="display:none">
-        <div class="detail-section-title">Owner Information</div>
-        <div class="owner-section" id="d-owner"></div>
-      </div>
-
-      <!-- METRO PROXIMITY -->
-      <div class="detail-section">
-        <div class="detail-section-title">Transit Access</div>
-        <div id="d-metro"></div>
-      </div>
-
-      <!-- FLAGS -->
-      <div class="detail-section" id="d-flags-section" style="display:none">
-        <div class="detail-section-title">Investment Flags</div>
-        <div class="detail-flags" id="d-flags"></div>
-      </div>
-    </div>
-
-  </div><!-- end dash-wrapper -->
-</div><!-- end dashboard page -->
+</div>
 
 <script>
 // ============================================================
-// DC MULTIFAMILY SCOUT — Dashboard Logic
+// STATE
 // ============================================================
-
-// --- STATE ---
 let allProperties = [];
-let filteredProperties = [];
-let map = null;
-let markers = {};
-let selectedId = null;
-let minUnits = 0;
-let minScore = 0;
-let activeType = 'all';
-let dashboardInited = false;
-let liveDataLoaded = false;
-
-
-// Metro stations for proximity scoring
-const METRO_STATIONS = [
-  {name:'Metro Center',lat:38.8983,lng:-77.0281},{name:'Gallery Pl',lat:38.8983,lng:-77.0219},
-  {name:'Union Station',lat:38.8978,lng:-77.0069},{name:'NoMa-Gallaudet',lat:38.9072,lng:-77.0031},
-  {name:'Rhode Island Ave',lat:38.9211,lng:-76.9958},{name:'Brookland',lat:38.9333,lng:-76.9944},
-  {name:'Fort Totten',lat:38.9519,lng:-77.0022},{name:'Georgia Ave-Petworth',lat:38.9367,lng:-77.0247},
-  {name:'Columbia Heights',lat:38.9283,lng:-77.0328},{name:'U Street',lat:38.9169,lng:-77.0286},
-  {name:'Shaw-Howard',lat:38.9128,lng:-77.0219},{name:'Mt Vernon Sq',lat:38.9058,lng:-77.0222},
-  {name:'McPherson Sq',lat:38.9014,lng:-77.0339},{name:'Farragut North',lat:38.9033,lng:-77.0397},
-  {name:'Dupont Circle',lat:38.9097,lng:-77.0436},{name:'Woodley Park',lat:38.9250,lng:-77.0525},
-  {name:'Cleveland Park',lat:38.9347,lng:-77.0581},{name:'Van Ness-UDC',lat:38.9436,lng:-77.0631},
-  {name:'Tenleytown',lat:38.9489,lng:-77.0794},{name:'Foggy Bottom',lat:38.9006,lng:-77.0503},
-  {name:'Farragut West',lat:38.9014,lng:-77.0406},{name:"L'Enfant Plaza",lat:38.8847,lng:-77.0219},
-  {name:'Capitol South',lat:38.8850,lng:-77.0053},{name:'Eastern Market',lat:38.8847,lng:-76.9958},
-  {name:'Stadium-Armory',lat:38.8867,lng:-76.9772},{name:'Anacostia',lat:38.8628,lng:-76.9953},
-  {name:'Congress Heights',lat:38.8456,lng:-76.9881},{name:'Navy Yard',lat:38.8764,lng:-77.0053},
-  {name:'Waterfront',lat:38.8764,lng:-77.0175},{name:'Archives',lat:38.8936,lng:-77.0219},
-  {name:'Deanwood',lat:38.9083,lng:-76.9356},{name:'Benning Road',lat:38.8908,lng:-76.9386},
-];
-
-// --- SCORING ENGINE ---
-function haversine(lat1, lng1, lat2, lng2) {
-  const R = 3959;
-  const dL = (lat2 - lat1) * Math.PI / 180;
-  const dN = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dL/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dN/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function nearestMetroMiles(lat, lng) {
-  let min = Infinity;
-  for (const s of METRO_STATIONS) {
-    const d = haversine(lat, lng, s.lat, s.lng);
-    if (d < min) min = d;
-  }
-  return min;
-}
-
-function nearestMetroInfo(lat, lng) {
-  let min = Infinity;
-  let nearest = null;
-  for (const s of METRO_STATIONS) {
-    const d = haversine(lat, lng, s.lat, s.lng);
-    if (d < min) { min = d; nearest = s; }
-  }
-  return { name: nearest ? nearest.name : '—', miles: min };
-}
-
-function computeScore(p) {
-  const factors = {};
-
-  // Factor 1: Price per Unit (weight 40%)
-  if (p.num_units > 0 && p.sale_price > 0) {
-    const ppu = p.sale_price / p.num_units;
-    let s;
-    if (ppu < 100000) s = 100;
-    else if (ppu < 200000) s = 88;
-    else if (ppu < 300000) s = 72;
-    else if (ppu < 450000) s = 55;
-    else if (ppu < 650000) s = 38;
-    else s = 22;
-    factors.ppu = { score: s, label: 'Price/Unit' };
-  } else if (p.use_type === 'Vacant Lot' && p.sale_price > 0 && p.land_sqft > 0) {
-    const psf = p.sale_price / p.land_sqft;
-    let s;
-    if (psf < 20) s = 95;
-    else if (psf < 50) s = 80;
-    else if (psf < 100) s = 62;
-    else if (psf < 200) s = 45;
-    else s = 30;
-    factors.ppu = { score: s, label: 'Price/Lot Sqft' };
-  } else {
-    factors.ppu = { score: 50, label: 'Price/Unit' };
-  }
-
-  // Factor 2: Condition / Grade (weight 25%)
-  const gradeMap = { 'Excellent':100, 'Very Good':85, 'Good':70, 'Average':52, 'Fair':32, 'Poor':15, 'N/A':65 };
-  factors.grade = { score: gradeMap[p.grade] || 52, label: 'Condition' };
-
-  // Factor 3: Lot-to-Building Ratio (weight 20%)
-  if (p.use_type === 'Vacant Lot') {
-    factors.ratio = { score: 100, label: 'Dev Potential' };
-  } else if (p.gba_sqft > 0) {
-    const r = p.land_sqft / p.gba_sqft;
-    let s;
-    if (r >= 2) s = 100;
-    else if (r >= 1.5) s = 82;
-    else if (r >= 1.0) s = 65;
-    else if (r >= 0.6) s = 48;
-    else s = 32;
-    factors.ratio = { score: s, label: 'Dev Potential' };
-  } else {
-    factors.ratio = { score: 50, label: 'Dev Potential' };
-  }
-
-  // Factor 4: Metro Proximity (weight 15%)
-  const dist = nearestMetroMiles(p.lat, p.lng);
-  let metroS;
-  if (dist < 0.2) metroS = 100;
-  else if (dist < 0.4) metroS = 85;
-  else if (dist < 0.6) metroS = 68;
-  else if (dist < 1.0) metroS = 50;
-  else if (dist < 1.5) metroS = 32;
-  else metroS = 18;
-  factors.metro = { score: metroS, label: 'Metro Proximity' };
-
-  const composite = Math.round(
-    factors.ppu.score * 0.40 +
-    factors.grade.score * 0.25 +
-    factors.ratio.score * 0.20 +
-    factors.metro.score * 0.15
-  );
-
-  return { composite, factors };
-}
-
-function getScoreClass(s) {
-  if (s >= 70) return 'green';
-  if (s >= 40) return 'yellow';
-  return 'red';
-}
-
-function getScoreColor(s) {
-  if (s >= 70) return 'var(--green)';
-  if (s >= 40) return 'var(--yellow)';
-  return 'var(--red)';
-}
-
-function getRatingLabel(s) {
-  if (s >= 70) return 'Strong Opportunity';
-  if (s >= 55) return 'Moderate Opportunity';
-  if (s >= 40) return 'Watch List';
-  return 'Weak Fundamentals';
-}
-
-// --- MAP INIT ---
-function initMap() {
-  map = L.map('map', {
-    center: [38.91, -77.015],
-    zoom: 12,
-    zoomControl: true,
-  });
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
-    maxZoom: 19,
-    subdomains: 'abcd',
-  }).addTo(map);
-}
-
-// --- RENDER MAP MARKERS ---
-function renderMarkers(properties) {
-  // Remove existing markers
-  for (const id in markers) {
-    markers[id].remove();
-  }
-  markers = {};
-
-  properties.forEach(p => {
-    if (!p.lat || !p.lng) return;
-    const cls = getScoreClass(p.score.composite);
-    const color = getScoreColor(p.score.composite);
-    const radius = p.num_units >= 20 ? 11 : p.num_units >= 8 ? 9 : p.num_units >= 3 ? 7 : 6;
-
-    const marker = L.circleMarker([p.lat, p.lng], {
-      radius,
-      fillColor: color,
-      color: 'rgba(0,0,0,0.5)',
-      weight: 1.5,
-      fillOpacity: 0.85,
-    });
-
-    marker.on('click', () => showDetail(p));
-    marker.bindTooltip(`<b>${p.address}</b><br>${p.num_units ? p.num_units + ' units · ' : 'Vacant Lot · '}Score ${p.score.composite}`, {
-      className: 'leaflet-tooltip-dark',
-      direction: 'top',
-    });
-
-    marker.addTo(map);
-    markers[p.id] = marker;
-  });
-}
-
-// --- SHOW DETAIL PANEL ---
-function showDetail(p) {
-  selectedId = p.id;
-
-  // Address and location
-  document.getElementById('d-addr').textContent = p.address;
-  const locParts = [];
-  if (p.ward && p.ward !== 0) locParts.push('Ward ' + p.ward);
-  if (p.neighborhood && p.neighborhood !== 'DC') locParts.push(p.neighborhood);
-  document.getElementById('d-loc').textContent = locParts.length ? locParts.join(' · ') : (p.ssl || '');
-
-  // Score circle
-  const sc = getScoreClass(p.score.composite);
-  const circle = document.getElementById('d-score-circle');
-  circle.textContent = p.score.composite;
-  circle.className = 'score-circle ' + sc;
-
-  const rating = document.getElementById('d-score-rating');
-  rating.textContent = getRatingLabel(p.score.composite);
-  rating.className = 'score-rating ' + sc;
-
-  // Score factors with explanations
-  const factorExplain = {
-    ppu: {
-      weight: '40%',
-      getExplain: (p) => {
-        if (p.num_units > 0 && p.sale_price > 0) {
-          const ppu = Math.round(p.sale_price / p.num_units);
-          return `$${(ppu/1000).toFixed(0)}K per door — lower price per unit means better potential cash flow per dollar invested.`;
-        }
-        if (p.use_type === 'Vacant Lot' && p.land_sqft > 0 && p.sale_price > 0) {
-          return `$${Math.round(p.sale_price / p.land_sqft)}/sqft of land — lower land cost increases development margins.`;
-        }
-        return 'No recent sale data available for this calculation.';
-      }
-    },
-    grade: {
-      weight: '25%',
-      getExplain: (p) => {
-        if (!p.grade || p.grade === 'N/A') return 'No condition data from DC assessor.';
-        const map = { 'Excellent':'minimal capex needed', 'Very Good':'low renovation risk', 'Good':'typical maintenance expected', 'Average':'standard condition for its age', 'Fair':'likely needs significant renovation', 'Poor':'major capital expenditure required' };
-        return `Rated "${p.grade}" by DC assessor — ${map[p.grade] || 'condition not specified'}.`;
-      }
-    },
-    ratio: {
-      weight: '20%',
-      getExplain: (p) => {
-        if (p.use_type === 'Vacant Lot') return 'Vacant lot — maximum development potential with no existing structure.';
-        if (p.gba_sqft > 0 && p.land_sqft > 0) {
-          const r = (p.land_sqft / p.gba_sqft).toFixed(2);
-          return `Lot is ${r}x the building footprint — ${r >= 1.5 ? 'significant room to add density or expand' : r >= 1.0 ? 'moderate expansion potential' : 'building covers most of the lot'}.`;
-        }
-        return 'Insufficient lot/building data for this calculation.';
-      }
-    },
-    metro: {
-      weight: '15%',
-      getExplain: (p) => {
-        const info = nearestMetroInfo(p.lat, p.lng);
-        return `${info.miles.toFixed(2)} miles to ${info.name} station — ${info.miles < 0.4 ? 'excellent' : info.miles < 0.7 ? 'good' : info.miles < 1.0 ? 'moderate' : 'limited'} transit access for tenants.`;
-      }
-    },
-  };
-
-  const factorsEl = document.getElementById('d-factors');
-  const fKeys = ['ppu', 'grade', 'ratio', 'metro'];
-  factorsEl.innerHTML = fKeys.map(k => {
-    const f = p.score.factors[k];
-    const ex = factorExplain[k];
-    return `<div class="factor-row-enhanced">
-      <div class="factor-top">
-        <span class="factor-name">${f.label} <span class="factor-weight">(${ex.weight})</span></span>
-        <div class="factor-bar-bg"><div class="factor-bar-fill" style="width:${f.score}%"></div></div>
-        <span class="factor-score">${f.score}</span>
-      </div>
-      <div class="factor-explain">${ex.getExplain(p)}</div>
-    </div>`;
-  }).join('');
-
-  // Type tag
-  document.getElementById('d-type').textContent = p.use_type;
-
-  // Detail grid — only show fields that have data
-  const ppu = p.num_units > 0 && p.sale_price > 0
-    ? '$' + Math.round(p.sale_price / p.num_units / 1000) + 'K'
-    : null;
-  const psf = p.gba_sqft > 0 && p.sale_price > 0
-    ? '$' + Math.round(p.sale_price / p.gba_sqft)
-    : null;
-
-  const gridCells = [];
-  if (p.num_units > 0) gridCells.push({ label: 'Units', val: p.num_units, hl: true });
-  else if (p.use_type === 'Vacant Lot') gridCells.push({ label: 'Type', val: 'Vacant Lot', hl: true });
-  if (p.year_built) gridCells.push({ label: 'Year Built', val: p.year_built });
-  if (p.stories) gridCells.push({ label: 'Stories', val: p.stories });
-  if (p.gba_sqft) gridCells.push({ label: 'Building', val: p.gba_sqft.toLocaleString() + ' sqft' });
-  if (p.land_sqft) gridCells.push({ label: 'Lot Size', val: p.land_sqft.toLocaleString() + ' sqft' });
-  if (p.sale_price) gridCells.push({ label: 'Last Sale', val: '$' + (p.sale_price >= 1000000 ? (p.sale_price/1000000).toFixed(2) + 'M' : (p.sale_price/1000).toFixed(0) + 'K') });
-  if (p.sale_date && p.sale_date !== '—') gridCells.push({ label: 'Sale Date', val: p.sale_date });
-  if (ppu) gridCells.push({ label: 'Price/Unit', val: ppu, hl: true });
-  if (psf) gridCells.push({ label: 'Price/Sqft', val: psf });
-  if (p.zoning && p.zoning !== '—') gridCells.push({ label: 'Zoning', val: p.zoning });
-  if (p.grade && p.grade !== 'N/A') gridCells.push({ label: 'Condition', val: p.grade });
-  if (p.assessment) gridCells.push({ label: 'Assessment', val: '$' + (p.assessment >= 1000000 ? (p.assessment/1000000).toFixed(2) + 'M' : (p.assessment/1000).toFixed(0) + 'K') });
-  if (p.tax) gridCells.push({ label: 'Annual Tax', val: '$' + p.tax.toLocaleString() });
-
-  // If odd number of cells, make last one span full width
-  document.getElementById('d-grid').innerHTML = gridCells.map((c, i) => {
-    const span = (i === gridCells.length - 1 && gridCells.length % 2 !== 0) ? ' style="grid-column:span 2"' : '';
-    return `<div class="dg-cell"${span}><span class="dg-label">${c.label}</span><span class="dg-val${c.hl ? ' highlight' : ''}">${c.val}</span></div>`;
-  }).join('');
-
-  // Owner section — only show if we have real data
-  const ownerSection = document.getElementById('d-owner-section');
-  const ownerEl = document.getElementById('d-owner');
-  const hasOwner = p.owner && p.owner !== '—' && p.owner !== '';
-  const hasOwnerAddr = p.owner_address && p.owner_address !== '—' && p.owner_address !== '';
-
-  if (hasOwner || hasOwnerAddr) {
-    ownerSection.style.display = 'block';
-    let ownerHTML = '';
-    if (hasOwner) ownerHTML += `<div class="owner-row"><span class="owner-label">Name</span><span class="owner-val">${p.owner}</span></div>`;
-    if (hasOwnerAddr) ownerHTML += `<div class="owner-row"><span class="owner-label">Mailing Address</span><span class="owner-val">${p.owner_address}</span></div>`;
-    if (p.ssl) ownerHTML += `<div class="owner-row"><span class="owner-label">SSL</span><span class="owner-val" style="font-family:monospace;font-size:0.78rem">${p.ssl}</span></div>`;
-    ownerEl.innerHTML = ownerHTML;
-  } else {
-    ownerSection.style.display = 'none';
-  }
-
-  // Metro proximity
-  const metro = nearestMetroInfo(p.lat, p.lng);
-  document.getElementById('d-metro').innerHTML = `
-    <div class="nearest-metro">
-      <span class="metro-icon">&#9689;</span>
-      <span class="metro-name">${metro.name}</span>
-      <span class="metro-dist">${metro.miles.toFixed(2)} mi</span>
-    </div>`;
-
-  // Flags — only show section if there are flags
-  const flags = [];
-  if (p.use_type === 'Vacant Lot') flags.push({ text: 'Vacant Lot', type: 'positive' });
-  if (p.num_units > 0 && p.sale_price > 0 && p.sale_price / p.num_units < 250000)
-    flags.push({ text: 'Below $250K/Unit', type: 'positive' });
-  if (p.assessment > 0 && p.sale_price > 0 && p.assessment / p.sale_price > 1.05)
-    flags.push({ text: 'Assessment > Sale', type: 'positive' });
-  if (p.year_built && p.year_built < 1950) flags.push({ text: 'Pre-1950', type: 'caution' });
-  if (p.grade === 'Fair' || p.grade === 'Poor') flags.push({ text: 'Needs Renovation', type: 'caution' });
-  if (p.land_sqft > 0 && p.gba_sqft > 0 && p.land_sqft / p.gba_sqft >= 1.5)
-    flags.push({ text: 'High Lot Ratio', type: 'positive' });
-  if (p.num_units >= 10) flags.push({ text: '10+ Units', type: 'positive' });
-
-  const flagsSection = document.getElementById('d-flags-section');
-  if (flags.length > 0) {
-    flagsSection.style.display = 'block';
-    document.getElementById('d-flags').innerHTML = flags.map(f =>
-      `<span class="flag-tag ${f.type}">${f.text}</span>`
-    ).join('');
-  } else {
-    flagsSection.style.display = 'none';
-  }
-
-  // Highlight selected in list
-  document.querySelectorAll('.prop-row').forEach(r => r.classList.remove('selected'));
-  const row = document.querySelector(`.prop-row[data-id="${p.id}"]`);
-  if (row) { row.classList.add('selected'); row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-
-  document.getElementById('prop-detail').classList.add('open');
-}
-
-function closeDetail() {
-  document.getElementById('prop-detail').classList.remove('open');
-  selectedId = null;
-  document.querySelectorAll('.prop-row').forEach(r => r.classList.remove('selected'));
-}
-
-// --- FILTER CONTROLS ---
-function setUnits(val) {
-  minUnits = parseInt(val);
-  document.getElementById('units-val').textContent = val == 0 ? 'Any' : val + '+';
-  applyFilters();
-}
-
-function setScore(val) {
-  minScore = parseInt(val);
-  document.getElementById('score-val').textContent = val;
-  applyFilters();
-}
-
-function applyFilters() {
-  activeType = document.getElementById('type-select').value;
-
-  filteredProperties = allProperties.filter(p => {
-    if (minUnits > 0 && p.num_units < minUnits) return false;
-    if (p.score.composite < minScore) return false;
-    if (activeType === 'multifamily' && p.use_type === 'Vacant Lot') return false;
-    if (activeType === 'vacant' && p.use_type !== 'Vacant Lot') return false;
-    if (activeType === 'mixed' && p.use_type !== 'Mixed Use') return false;
-    return true;
-  });
-
-  renderMarkers(filteredProperties);
-  renderList(filteredProperties);
-  updateStats(filteredProperties);
-}
-
-// --- PROPERTY LIST ---
-function renderList(properties) {
-  const list = document.getElementById('prop-list');
-  document.getElementById('results-count').textContent = properties.length;
-
-  const sorted = [...properties].sort((a, b) => b.score.composite - a.score.composite);
-
-  list.innerHTML = sorted.map(p => {
-    const color = getScoreColor(p.score.composite);
-    const units = p.num_units > 0 ? `${p.num_units} units` : 'Vacant Lot';
-    const price = p.sale_price > 0 ? ` · $${(p.sale_price/1000000).toFixed(1)}M` : '';
-    return `<div class="prop-row" data-id="${p.id}" onclick='showDetailById("${p.id}")'>
-      <div class="prop-score-dot" style="background:${color}"></div>
-      <div class="prop-row-info">
-        <div class="prop-row-addr">${p.address}</div>
-        <div class="prop-row-meta">W${p.ward} · ${units}${price}</div>
-      </div>
-      <div class="prop-row-score" style="color:${color}">${p.score.composite}</div>
-    </div>`;
-  }).join('');
-}
-
-function showDetailById(id) {
-  const p = allProperties.find(x => x.id === id);
-  if (p) showDetail(p);
-}
-
-// --- STATS ---
-function updateStats(properties) {
-  document.getElementById('stat-count').textContent = properties.length;
-
-  const withUnits = properties.filter(p => p.num_units > 0 && p.sale_price > 0);
-  if (withUnits.length > 0) {
-    const avgPPU = Math.round(withUnits.reduce((sum, p) => sum + p.sale_price / p.num_units, 0) / withUnits.length);
-    document.getElementById('stat-ppu').textContent =
-      avgPPU >= 1000000 ? '$' + (avgPPU/1000000).toFixed(1) + 'M' : '$' + Math.round(avgPPU/1000) + 'K';
-  } else {
-    document.getElementById('stat-ppu').textContent = '—';
-  }
-
-  const vacantCount = properties.filter(p => p.use_type === 'Vacant Lot').length;
-  document.getElementById('stat-vacant').textContent = vacantCount;
-}
-
-// --- DATA LOADING ---
-
-// Compute the centroid of a polygon from its ring coordinates (fallback for polygon layers)
-function polyCenter(rings) {
-  const ring = rings[0];
-  if (!ring || ring.length === 0) return null;
-  let x = 0, y = 0;
-  for (const pt of ring) { x += pt[0]; y += pt[1]; }
-  return { x: x / ring.length, y: y / ring.length };
-}
-
-// Render properties that came from the static JSON (pre-processed by fetch_dc_data.py)
-function renderStaticData(props) {
-  allProperties = props.map(p => ({
-    ...p,
-    score: p.score || computeScore(p),
-  }));
-  filteredProperties = [...allProperties];
-  minUnits = 0; minScore = 0;
-  document.getElementById('units-slider').value = 0;
-  document.getElementById('score-slider').value = 0;
-  document.getElementById('units-val').textContent = 'Any';
-  document.getElementById('score-val').textContent = '0';
-  document.getElementById('type-select').value = 'all';
-  renderMarkers(filteredProperties);
-  renderList(filteredProperties);
-  updateStats(filteredProperties);
-  closeDetail();
-}
-
-async function fetchLiveData() {
-  if (liveDataLoaded) return;
-
-  const badge = document.getElementById('data-badge');
-  const exportBtn = document.getElementById('export-btn');
-  const propList = document.getElementById('prop-list');
-
-  // ── PRIMARY PATH: Load pre-fetched static JSON (works in all browsers, no CORS) ──
-  try {
-    badge.textContent = 'Loading property data…';
-    const resp = await fetch('data/properties.json');
-    if (resp.ok) {
-      const json = await resp.json();
-      const props = json.properties || [];
-      if (props.length > 0) {
-        renderStaticData(props);
-        liveDataLoaded = true;
-        exportBtn.disabled = false;
-        const updated = json.updated ? ` · updated ${json.updated.slice(0,10)}` : '';
-        badge.textContent = `✓ ${props.length.toLocaleString()} DC properties${updated}`;
-        console.log(`[Dashboard] Loaded ${props.length} properties from static data file`);
-        return; // done — no need for live API
-      }
-    }
-  } catch (e) {
-    console.log('[Dashboard] Static data/properties.json not available — trying live API…', e.message);
-  }
-
-  // ── FALLBACK PATH: Live DC GIS API (may be blocked by tracking prevention) ──
-  badge.textContent = 'Connecting to DC Open Data (live)…';
-
-  // MapServer/25 = authoritative CAMA polygon layer (DCGIS_DATA service — returns geometry)
-  // MapServer/4  = App layer (DCGIS_APPS — strips geometry, attributes only)
-  const POLY_URL  = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query';
-  const POINT_URL = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query';
-
-  const PAGE_SIZE = 1000;
-  const WHERE  = 'NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)';
-  const FIELDS = 'SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM';
-
-  const usecodeMap = {
-    13:'Cooperative Apartment', 21:'Duplex', 22:'Duplex/Flat', 23:'Triplex',
-    24:'Row House (3+ units)', 25:'Semi-Detached (3+ units)', 29:'Walk-Up Apartment',
-    31:'Elevator Apartment', 32:'Apartment Conversion', 39:'Row/Apt Combo',
-    41:'Mixed Use (Residential)', 42:'Mixed Use (Commercial)', 89:'Vacant w/ Improvements',
-    91:'Vacant Lot', 92:'Vacant Residential',
-  };
-
-  // Build URL string explicitly — avoids URLSearchParams encoding quirks
-  function buildUrl(baseUrl, offset) {
-    var qs = 'where='            + encodeURIComponent(WHERE)
-           + '&outFields='       + encodeURIComponent(FIELDS)
-           + '&returnGeometry=true'
-           + '&resultRecordCount=' + PAGE_SIZE
-           + '&resultOffset='    + offset
-           + '&orderByFields=SSL+ASC'
-           + '&f=geojson';
-    return baseUrl + '?' + qs;
-  }
-
-  // Paginated fetch — explicit URL, no URLSearchParams spread
-  async function fetchAllPages(baseUrl, label) {
-    var all = [];
-    var offset = 0;
-    var page = 0;
-    while (true) {
-      page++;
-      badge.textContent = 'Loading DC properties\u2026 page ' + page + ' (' + all.length.toLocaleString() + ' so far)';
-      var url = buildUrl(baseUrl, offset);
-      if (page === 1) console.log('[DC GIS] ' + label + ' URL:', url);
-      var resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      var data = await resp.json();
-      if (data.error) throw new Error('API: ' + (data.error.message || JSON.stringify(data.error)));
-      var feats = data.features || [];
-      all = all.concat(feats);
-      var g0 = feats[0] ? feats[0].geometry : null;
-      console.log('[DC GIS] ' + label + ' page ' + page + ': ' + feats.length + ' records, geometry[0]=' + JSON.stringify(g0));
-      if (feats.length < PAGE_SIZE || data.exceededTransferLimit === false) break;
-      offset += PAGE_SIZE;
-      await new Promise(function(r){ setTimeout(r, 300); });
-    }
-    return all;
-  }
-
-  // ── Universal coordinate extractor — handles GeoJSON AND legacy ArcGIS JSON ──
-  function getCoords(f) {
-    var g = f.geometry;
-    if (!g) return null;
-
-    // GeoJSON Point: { type:"Point", coordinates:[lng,lat] }
-    if (g.type === 'Point' && Array.isArray(g.coordinates) && g.coordinates.length >= 2) {
-      return { lat: g.coordinates[1], lng: g.coordinates[0] };
-    }
-    // GeoJSON Polygon: { type:"Polygon", coordinates:[[[lng,lat],...]] }
-    if (g.type === 'Polygon' && Array.isArray(g.coordinates) && g.coordinates[0]) {
-      var c = polyCenter([g.coordinates[0]]);
-      if (c) return { lat: c.y, lng: c.x };
-    }
-    // GeoJSON MultiPolygon: { type:"MultiPolygon", coordinates:[[[[lng,lat],...]]] }
-    if (g.type === 'MultiPolygon' && Array.isArray(g.coordinates) && g.coordinates[0] && g.coordinates[0][0]) {
-      var c = polyCenter([g.coordinates[0][0]]);
-      if (c) return { lat: c.y, lng: c.x };
-    }
-    // Legacy ArcGIS JSON Point: { x:lng, y:lat }
-    if (typeof g.x === 'number' && typeof g.y === 'number' && g.x !== 0 && g.y !== 0) {
-      return { lat: g.y, lng: g.x };
-    }
-    // Legacy ArcGIS JSON Polygon: { rings:[[[lng,lat],...]] }
-    if (Array.isArray(g.rings) && g.rings.length > 0 && g.rings[0].length > 0) {
-      var c = polyCenter(g.rings);
-      if (c) return { lat: c.y, lng: c.x };
-    }
-    return null;
-  }
-
-  try {
-    var allFeatures = [];
-
-    // ── Primary: MapServer/25 polygon layer (DCGIS_DATA — geometry enabled) ──
-    try {
-      badge.textContent = 'Connecting to DC Open Data\u2026';
-      allFeatures = await fetchAllPages(POLY_URL, 'MapServer/25');
-    } catch (e1) {
-      console.warn('[DC GIS] MapServer/25 failed:', e1.message);
-    }
-
-    // ── Fallback: MapServer/4 — triggered if count=0 OR geometry absent ──────
-    var hasGeom = allFeatures.length > 0 && getCoords(allFeatures[0]) !== null;
-    console.log('[DC GIS] MapServer/25 result: ' + allFeatures.length + ' records, hasGeom=' + hasGeom);
-    if (allFeatures.length === 0 || !hasGeom) {
-      badge.textContent = 'Trying fallback endpoint\u2026';
-      try {
-        allFeatures = await fetchAllPages(POINT_URL, 'MapServer/4');
-        var hasGeom2 = allFeatures.length > 0 && getCoords(allFeatures[0]) !== null;
-        console.log('[DC GIS] MapServer/4 result: ' + allFeatures.length + ' records, hasGeom=' + hasGeom2);
-      } catch (e2) {
-        console.warn('[DC GIS] MapServer/4 also failed:', e2.message);
-      }
-    }
-
-    if (allFeatures.length === 0) {
-      throw new Error('DC Open Data returned 0 features — the API may be temporarily down.');
-    }
-
-    // ── Transform features — getCoords() handles both GeoJSON and ArcGIS JSON ──
-    // GeoJSON uses f.properties; ArcGIS JSON uses f.attributes — support both
-    const afterBldg = allFeatures.filter(f => {
-      const a = f.properties || f.attributes || {};
-      return a.BLDG_NUM === 1 || !a.BLDG_NUM;
-    });
-    console.log(`[DC GIS] After BLDG_NUM filter: ${afterBldg.length} of ${allFeatures.length}`);
-
-    const liveProps = afterBldg
-      .map((f, i) => {
-        const coords = getCoords(f);
-        if (!coords) return null; // skip features with no usable geometry
-        const { lat, lng } = coords;
-        const a = f.properties || f.attributes || {};
-        const use = usecodeMap[a.USECODE] || 'Multifamily';
-        const isVacant = [89, 91, 92].includes(a.USECODE);
-        return {
-          id: 'LIVE_' + i,
-          ssl: (a.SSL || '').trim(),
-          address: a.SSL ? 'SSL: ' + a.SSL : 'DC Property',
-          ward: 0,
-          neighborhood: 'DC',
-          lat, lng,
-          num_units: a.NUM_UNITS || 0,
-          stories: a.STORIES || 0,
-          year_built: a.AYB || null,
-          gba_sqft: a.GBA || 0,
-          land_sqft: a.LANDAREA || 0,
-          sale_price: a.PRICE || 0,
-          sale_date: a.SALEDATE ? new Date(a.SALEDATE).toLocaleDateString('en-US', {year:'numeric',month:'short'}) : '—',
-          use_type: isVacant ? 'Vacant Lot' : use,
-          grade: a.GRADE_D || 'Average',
-          zoning: '—',
-          owner: '—',
-          owner_address: '—',
-          assessment: 0,
-          tax: 0,
-        };
-      })
-      .filter(Boolean);
-
-    console.log(`[DC GIS] Valid properties after getCoords filter: ${liveProps.length}`);
-
-    if (liveProps.length === 0) {
-      // Log the first 3 raw features so we can see exactly what geometry came back
-      allFeatures.slice(0, 3).forEach((f, i) => {
-        console.error(`[DC GIS] Raw feature[${i}] geometry:`, JSON.stringify(f.geometry));
-        console.error(`[DC GIS] Raw feature[${i}] properties:`, JSON.stringify(f.properties || f.attributes));
-      });
-      throw new Error(`API returned ${allFeatures.length} records but getCoords() returned null for all. See console for raw geometry structure.`);
-    }
-
-    // ── First render pass (CAMA data only, no owner info yet) ────────────────
-    allProperties = liveProps.map(p => ({ ...p, score: computeScore(p) }));
-    filteredProperties = [...allProperties];
-
-    minUnits = 0; minScore = 0;
-    document.getElementById('units-slider').value = 0;
-    document.getElementById('score-slider').value = 0;
-    document.getElementById('units-val').textContent = 'Any';
-    document.getElementById('score-val').textContent = '0';
-    document.getElementById('type-select').value = 'all';
-
-    renderMarkers(filteredProperties);
-    renderList(filteredProperties);
-    updateStats(filteredProperties);
-    closeDetail();
-
-    liveDataLoaded = true;
-    exportBtn.disabled = false;
-    badge.textContent = `${liveProps.length.toLocaleString()} properties loaded — fetching owner & address data…`;
-
-    // ── Second pass: enrich with Tax Extract (owner, address, ward, zoning) ──
-    try {
-      await enrichWithTaxData(allProperties);
-      allProperties = allProperties.map(p => ({ ...p, score: computeScore(p) }));
-      filteredProperties = [...allProperties];
-      renderMarkers(filteredProperties);
-      renderList(filteredProperties);
-      updateStats(filteredProperties);
-    } catch (e) {
-      console.warn('[DC GIS] Tax enrichment failed (owner data unavailable):', e);
-    }
-
-    badge.textContent = `✓ ${liveProps.length.toLocaleString()} DC properties — live from DC Open Data`;
-
-  } catch (err) {
-    console.error('[DC GIS] Fatal fetch error:', err);
-    badge.textContent = `⚠ Could not load data — ${err.message}`;
-    propList.innerHTML = `
-      <div style="padding:1.5rem 1.4rem;color:var(--text-secondary);font-size:0.82rem;line-height:1.8">
-        <strong style="color:var(--accent)">Failed to load DC property data.</strong><br><br>
-        ${err.message}<br><br>
-        <strong>To diagnose:</strong> Open your browser's DevTools (F12 → Console tab) and look for <code>[DC GIS]</code> errors.
-        Common causes: network connection issue, or DC Open Data API temporarily down.<br><br>
-        <button onclick="liveDataLoaded=false;fetchLiveData()"
-          style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);
-                 padding:0.5rem 1rem;border-radius:6px;cursor:pointer;font-size:0.8rem">
-          ↺ Retry
-        </button>
-      </div>`;
-  }
-}
-
-// --- EXCEL EXPORT ---
-function exportToExcel() {
-  if (filteredProperties.length === 0) return;
-
-  const rows = filteredProperties
-    .sort((a, b) => b.score.composite - a.score.composite)
-    .map(p => {
-      const metro = nearestMetroInfo(p.lat, p.lng);
-      const row = {
-        'Address': p.address || '',
-        'Ward': p.ward || '',
-        'Neighborhood': p.neighborhood || '',
-        'Property Type': p.use_type || '',
-        'Units': p.num_units || '',
-        'Stories': p.stories || '',
-        'Year Built': p.year_built || '',
-        'Building Sqft': p.gba_sqft || '',
-        'Lot Sqft': p.land_sqft || '',
-        'Last Sale Price': p.sale_price || '',
-        'Sale Date': p.sale_date || '',
-        'Price Per Unit': (p.num_units > 0 && p.sale_price > 0) ? Math.round(p.sale_price / p.num_units) : '',
-        'Price Per Sqft': (p.gba_sqft > 0 && p.sale_price > 0) ? Math.round(p.sale_price / p.gba_sqft) : '',
-        'Condition': p.grade || '',
-        'Zoning': p.zoning || '',
-        'Assessment': p.assessment || '',
-        'Annual Tax': p.tax || '',
-        'Owner': p.owner || '',
-        'Owner Address': p.owner_address || '',
-        'SSL': p.ssl || '',
-        'Nearest Metro': metro.name,
-        'Metro Distance (mi)': parseFloat(metro.miles.toFixed(2)),
-        'Lot/Building Ratio': (p.gba_sqft > 0 && p.land_sqft > 0) ? parseFloat((p.land_sqft / p.gba_sqft).toFixed(2)) : '',
-        'Investment Score': p.score.composite,
-        'Score: Price/Unit': p.score.factors.ppu.score,
-        'Score: Condition': p.score.factors.grade.score,
-        'Score: Dev Potential': p.score.factors.ratio.score,
-        'Score: Metro': p.score.factors.metro.score,
-        'Latitude': p.lat,
-        'Longitude': p.lng,
-      };
-      // Remove empty fields
-      for (const k in row) {
-        if (row[k] === '' || row[k] === '—' || row[k] === null || row[k] === undefined) row[k] = '';
-      }
-      return row;
-    });
-
-  const ws = XLSX.utils.json_to_sheet(rows);
-
-  // Set column widths
-  ws['!cols'] = [
-    {wch:30},{wch:5},{wch:18},{wch:22},{wch:6},{wch:7},{wch:10},
-    {wch:12},{wch:10},{wch:14},{wch:12},{wch:13},{wch:13},{wch:10},
-    {wch:8},{wch:12},{wch:10},{wch:24},{wch:30},{wch:18},{wch:16},
-    {wch:14},{wch:14},{wch:14},{wch:13},{wch:13},{wch:13},{wch:10},{wch:10}
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'DC Properties');
-
-  const dateStr = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(wb, `DC_Multifamily_Scout_${dateStr}.xlsx`);
-}
-
-// --- ENRICH WITH TAX EXTRACT DATA (owner, ward, zoning, address) ---
-async function enrichWithTaxData(properties) {
-  const badge = document.getElementById('data-badge');
-  badge.textContent = `Fetching owner & address data from DC Tax Extract...`;
-
-  const ITS_BASE = 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/53/query';
-
-  // Build SSL lookup map
-  const sslMap = {};
-  properties.forEach(p => { if (p.ssl) sslMap[p.ssl] = p; });
-  const allSSLs = Object.keys(sslMap);
-
-  if (allSSLs.length === 0) return properties;
-
-  // Fetch in batches of 100 SSLs
-  const BATCH = 100;
-  let enriched = 0;
-
-  for (let i = 0; i < allSSLs.length; i += BATCH) {
-    const batch = allSSLs.slice(i, i + BATCH);
-    const whereList = batch.map(s => `'${s.replace(/'/g, "''")}'`).join(',');
-
-    try {
-      const params = new URLSearchParams({
-        where: `SSL IN (${whereList})`,
-        outFields: 'SSL,PREMISEADD,OWNERNAME,ADDRESS1,ADDRESS2,CITYSTZIP,WARD,NBHD,ZONING,ASSESSMENT_TAXABLE,CURTAX',
-        resultRecordCount: BATCH.toString(),
-        f: 'json',
-      });
-
-      const resp = await fetch(`${ITS_BASE}?${params}`);
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      if (data.error || !data.features) continue;
-
-      data.features.forEach(f => {
-        const a = f.attributes;
-        const ssl = (a.SSL || '').trim();
-        const prop = sslMap[ssl];
-        if (!prop) return;
-
-        if (a.PREMISEADD) prop.address = a.PREMISEADD.trim();
-        if (a.OWNERNAME) prop.owner = a.OWNERNAME.trim();
-        if (a.ADDRESS1) {
-          const parts = [a.ADDRESS1];
-          if (a.ADDRESS2) parts.push(a.ADDRESS2);
-          if (a.CITYSTZIP) parts.push(a.CITYSTZIP);
-          prop.owner_address = parts.map(s => s.trim()).filter(Boolean).join(', ');
-        }
-        if (a.WARD) prop.ward = parseInt(a.WARD) || prop.ward;
-        if (a.NBHD) prop.neighborhood = a.NBHD.trim();
-        if (a.ZONING) prop.zoning = a.ZONING.trim();
-        if (a.ASSESSMENT_TAXABLE) prop.assessment = a.ASSESSMENT_TAXABLE;
-        if (a.CURTAX) prop.tax = a.CURTAX;
-        enriched++;
-      });
-
-      badge.textContent = `Enriching data... ${enriched} of ${allSSLs.length} properties matched with owner/address`;
-
-      // Small delay between batches
-      if (i + BATCH < allSSLs.length) await new Promise(r => setTimeout(r, 200));
-    } catch (e) {
-      console.warn('Tax extract batch error:', e);
-    }
-  }
-
-  return properties;
-}
-
-// --- DASHBOARD INIT ---
-function initDashboard() {
-  if (dashboardInited) return;
-  dashboardInited = true;
-
-  setTimeout(() => {
-    initMap();
-    // Hide the loading overlay — map is ready, data fetches in background
-    const loading = document.getElementById('dash-loading');
-    loading.classList.add('hidden');
-    setTimeout(() => { loading.style.display = 'none'; }, 500);
-    // Show empty state in list while data loads
-    document.getElementById('prop-list').innerHTML =
-      '<div style="padding:1.5rem 1.4rem;color:var(--text-secondary);font-size:0.82rem;line-height:1.6">Loading DC property data from DC Open Data...<br><br>This may take 15–30 seconds for the full dataset.</div>';
-    // Fetch live data immediately
-    fetchLiveData();
-  }, 100);
-}
-
-// --- PAGE NAVIGATION ---
+let sortKey = 'address';
+let sortAsc = true;
+let dashboardLoaded = false;
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -2113,29 +593,159 @@ function showPage(pageId) {
   const tabMap = { home: 0, about: 1, dashboard: 2 };
   tabs[tabMap[pageId]].classList.add('active');
 
-  if (pageId === 'dashboard') {
-    initDashboard();
-    // Fix Leaflet map size after becoming visible
-    if (map) setTimeout(() => map.invalidateSize(), 150);
+  if (pageId === 'dashboard' && !dashboardLoaded) {
+    dashboardLoaded = true;
+    loadData();
   }
 }
-</script>
 
-<!-- Leaflet tooltip dark theme -->
-<style>
-  .leaflet-tooltip-dark {
-    background: rgba(12, 15, 10, 0.95) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text-primary) !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 12px !important;
-    border-radius: 6px !important;
-    padding: 6px 10px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadData() {
+  try {
+    const resp = await fetch('data/properties.json');
+    if (!resp.ok) throw new Error('File not found');
+    const json = await resp.json();
+    allProperties = json.properties || [];
+
+    if (allProperties.length === 0) {
+      document.getElementById('dash-loading').innerHTML =
+        '<div style="color:var(--text-secondary);text-align:center;line-height:1.7">'
+        + 'No properties loaded yet.<br>'
+        + 'Run <code style="background:var(--bg-card);padding:0.2rem 0.5rem;border-radius:4px">python scripts/fetch_dc_data.py</code> to fetch DC property data.'
+        + '</div>';
+      return;
+    }
+
+    document.getElementById('dash-status').innerHTML =
+      '<span>' + allProperties.length.toLocaleString() + '</span> DC multifamily properties'
+      + (json.updated ? ' &middot; Updated ' + json.updated.split('T')[0] : '');
+
+    document.getElementById('export-btn').disabled = false;
+    document.getElementById('dash-loading').style.display = 'none';
+    document.getElementById('dash-table').style.display = '';
+
+    renderTable();
+
+  } catch (e) {
+    document.getElementById('dash-loading').innerHTML =
+      '<div style="color:var(--text-secondary);text-align:center;line-height:1.7">'
+      + 'Could not load property data.<br>'
+      + 'Run <code style="background:var(--bg-card);padding:0.2rem 0.5rem;border-radius:4px">python scripts/fetch_dc_data.py</code> first to generate the data file.'
+      + '</div>';
+  }
+}
+
+// ============================================================
+// TABLE RENDERING
+// ============================================================
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return Number(n).toLocaleString();
+}
+
+function fmtDollar(n) {
+  if (!n) return '—';
+  return '$' + Number(n).toLocaleString();
+}
+
+function renderTable() {
+  // Sort
+  const data = [...allProperties].sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (typeof va === 'string') va = (va || '').toLowerCase();
+    if (typeof vb === 'string') vb = (vb || '').toLowerCase();
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('dash-tbody');
+  const rows = [];
+
+  for (const p of data) {
+    rows.push(
+      '<tr>'
+      + '<td>' + (p.address || '—') + '</td>'
+      + '<td>' + (p.ward || '—') + '</td>'
+      + '<td class="num">' + fmt(p.units) + '</td>'
+      + '<td class="num">' + fmtDollar(p.assessed) + '</td>'
+      + '<td class="num">' + fmt(p.landArea) + '</td>'
+      + '<td class="num">' + fmt(p.bldgArea) + '</td>'
+      + '<td>' + (p.condGrade || '—') + '</td>'
+      + '<td>' + (p.useCode || '—') + '</td>'
+      + '<td class="num">' + (p.yearBuilt || '—') + '</td>'
+      + '<td>' + (p.owner || '—') + '</td>'
+      + '</tr>'
+    );
   }
 
-  .leaflet-tooltip-dark::before { display: none !important; }
-</style>
+  tbody.innerHTML = rows.join('');
+}
+
+// ============================================================
+// COLUMN SORTING
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.dash-table th').forEach(th => {
+    th.addEventListener('click', function() {
+      const key = this.dataset.key;
+
+      // Toggle direction if same column, otherwise ascending
+      if (sortKey === key) {
+        sortAsc = !sortAsc;
+      } else {
+        sortKey = key;
+        sortAsc = true;
+      }
+
+      // Update arrow visuals
+      document.querySelectorAll('.dash-table th').forEach(h => {
+        h.classList.remove('sorted');
+        h.querySelector('.sort-arrow').innerHTML = '&#9650;';
+      });
+      this.classList.add('sorted');
+      this.querySelector('.sort-arrow').innerHTML = sortAsc ? '&#9650;' : '&#9660;';
+
+      renderTable();
+    });
+  });
+});
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+function exportToExcel() {
+  if (!allProperties.length) return;
+
+  const rows = allProperties.map(p => ({
+    'Address':         p.address || '',
+    'Ward':            p.ward || '',
+    'Units':           p.units || 0,
+    'Assessed Value':  p.assessed || 0,
+    'Land Area':       p.landArea || 0,
+    'Building Area':   p.bldgArea || 0,
+    'Condition/Grade': p.condGrade || '',
+    'Use Code':        p.useCode || '',
+    'Year Built':      p.yearBuilt || 0,
+    'Owner':           p.owner || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 35 }, { wch: 6 }, { wch: 6 }, { wch: 16 },
+    { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 10 },
+    { wch: 10 }, { wch: 30 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'DC Multifamily');
+  XLSX.writeFile(wb, 'DC_Multifamily_Properties.xlsx');
+}
+</script>
 
 </body>
 </html>

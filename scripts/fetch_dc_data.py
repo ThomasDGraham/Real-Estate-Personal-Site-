@@ -1,403 +1,317 @@
 #!/usr/bin/env python3
 """
-DC Multifamily Property Data Fetcher
-=====================================
-Fetches all multifamily properties from DC Open Data (no API key needed)
-and saves them as data/properties.json for the tgrepe.com dashboard.
+DC Multifamily Property Fetcher
+Pulls all multifamily properties (2+ units) from DC Open Data ArcGIS REST API.
+Uses only built-in Python libraries — no pip installs needed.
 
-USAGE (Windows PowerShell):
-  python scripts/fetch_dc_data.py
-    -- or --
-  py scripts/fetch_dc_data.py
+Strategy:
+  1. Fetch SSLs + building data from CAMA layer (MapServer/25)
+     - Only has building fields: SSL, NUM_UNITS, GBA, GRADE_D, CNDTN_D,
+       EXTWALL_D, USECODE, LANDAREA, AYB, PRICE, SALEDATE, etc.
+  2. Enrich with address, ward, assessed value, and owner from
+     the Tax Extract layer (MapServer/53) — which has everything.
 
-NO external libraries needed — uses only Python's built-in urllib.
-
-OUTPUT:
-  data/properties.json  (committed to your GitHub repo)
+Output: data/properties.json
 """
 
 import json
-import time
-import sys
 import os
-import urllib.request
+import sys
+import time
 import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
-# ── API Endpoints ────────────────────────────────────────────────────────────
-# Primary: CamaResPt — native POINT layer (direct x/y coordinates)
-POINT_URL  = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/Real_Property_Application/MapServer/4/query"
-# Fallback: CAMA WebMercator polygon layer
-POLY_URL   = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query"
-# Tax Extract: owner name, address, ward, zoning, assessment
-TAX_URL    = "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land_WebMercator/MapServer/53/query"
+# ---------------------------------------------------------------------------
+# CONFIG
+# ---------------------------------------------------------------------------
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUT_FILE   = os.path.join(SCRIPT_DIR, "..", "data", "properties.json")
 
-PAGE_SIZE  = 1000
-WHERE      = "NUM_UNITS >= 2 OR USECODE IN (21,22,23,24,25,29,31,32,39,41,42,89,91,92)"
-FIELDS     = "SSL,NUM_UNITS,AYB,GBA,LANDAREA,PRICE,SALEDATE,USECODE,GRADE_D,CNDTN_D,STORIES,BLDG_NUM"
+PAGE_SIZE = 2000
+WHERE     = "NUM_UNITS >= 2"
 
-USECODE_MAP = {
-    13: "Cooperative Apartment",
-    21: "Duplex",         22: "Duplex/Flat",
-    23: "Triplex",        24: "Row House (3+ units)",
-    25: "Semi-Detached (3+ units)", 29: "Walk-Up Apartment",
-    31: "Elevator Apartment",       32: "Apartment Conversion",
-    39: "Row/Apt Combo",  41: "Mixed Use (Residential)",
-    42: "Mixed Use (Commercial)",   89: "Vacant w/ Improvements",
-    91: "Vacant Lot",     92: "Vacant Residential",
-}
+# Fields that ACTUALLY EXIST on MapServer/25 (CAMA polygon layer)
+CAMA_FIELDS = ",".join([
+    "SSL", "NUM_UNITS", "GBA", "LANDAREA",
+    "GRADE", "GRADE_D", "CNDTN", "CNDTN_D", "EXTWALL_D",
+    "USECODE", "AYB", "PRICE", "SALEDATE"
+])
 
-# DC metro stations [name, lat, lng]
-METROS = [
-    ["Anacostia",        38.8633, -76.9953],
-    ["Archives",         38.8937, -77.0211],
-    ["Benning Road",     38.8904, -76.9381],
-    ["Bethesda",         38.9842, -77.0940],
-    ["Capitol South",    38.8850, -77.0050],
-    ["Columbia Heights", 38.9282, -77.0326],
-    ["Congress Heights", 38.8455, -76.9953],
-    ["Dupont Circle",    38.9096, -77.0434],
-    ["Eastern Market",   38.8844, -76.9963],
-    ["Farragut North",   38.9031, -77.0397],
-    ["Federal Triangle", 38.8933, -77.0280],
-    ["Foggy Bottom",     38.9001, -77.0502],
-    ["Fort Totten",      38.9519, -77.0023],
-    ["Friendship Heights",38.9606,-77.0856],
-    ["Gallery Place",    38.8982, -77.0219],
-    ["Georgia Ave",      38.9373, -77.0243],
-    ["H St/Benning",     38.8997, -76.9763],
-    ["Howard University",38.9281, -77.0201],
-    ["L'Enfant Plaza",   38.8846, -77.0215],
-    ["Metro Center",     38.8983, -77.0283],
-    ["Navy Yard",        38.8763, -77.0055],
-    ["NoMa",             38.9082, -77.0042],
-    ["Pentagon City",    38.8631, -77.0598],
-    ["Petworth",         38.9371, -77.0192],
-    ["Rhode Island Ave", 38.9207, -76.9958],
-    ["Shaw",             38.9125, -77.0218],
-    ["Silver Spring",    38.9940, -77.0310],
-    ["Stadium-Armory",   38.8853, -76.9766],
-    ["Takoma",           38.9762, -77.0127],
-    ["Tenleytown",       38.9477, -77.0795],
-    ["Union Station",    38.8973, -77.0063],
-    ["U Street",         38.9167, -77.0289],
-    ["Van Ness",         38.9440, -77.0635],
-    ["Waterfront",       38.8763, -77.0168],
-    ["Woodley Park",     38.9258, -77.0543],
-]
+# Fields to pull from Tax Extract (MapServer/53) for enrichment
+TAX_FIELDS = "SSL,PREMISEADD,WARD,ASSESSMENT,OWNERNAME"
 
-def poly_center(rings):
-    """Compute centroid of a polygon from its ring coordinates."""
-    ring = rings[0]
-    if not ring:
-        return None
-    x = sum(pt[0] for pt in ring) / len(ring)
-    y = sum(pt[1] for pt in ring) / len(ring)
-    return (x, y)
+# Primary: CAMA Polygon layer (MapServer/25)
+POLY_URL  = ("https://maps2.dcgis.dc.gov/dcgis/rest/services/"
+             "DCGIS_DATA/Property_and_Land_WebMercator/MapServer/25/query")
 
-def nearest_metro(lat, lng):
-    """Return (name, miles) for the closest metro station."""
-    best_name, best_dist = "Unknown", float("inf")
-    for name, mlat, mlng in METROS:
-        dlat = (lat - mlat) * 69.0
-        dlng = (lng - mlng) * 69.0 * 0.8  # rough cosine correction
-        d = (dlat**2 + dlng**2) ** 0.5
-        if d < best_dist:
-            best_dist, best_name = d, name
-    return best_name, round(best_dist, 2)
+# Fallback: CamaResPt Point layer (MapServer/4)
+POINT_URL = ("https://maps2.dcgis.dc.gov/dcgis/rest/services/"
+             "DCGIS_APPS/Real_Property_Application/MapServer/4/query")
 
-def build_url(base_url, offset):
-    """Build ArcGIS query URL explicitly — no dict spread, returnGeometry always included."""
+# Enrichment: ITS Tax Extract (MapServer/53) — has address, ward, assessed, owner
+TAX_URL   = ("https://maps2.dcgis.dc.gov/dcgis/rest/services/"
+             "DCGIS_DATA/Property_and_Land_WebMercator/MapServer/53/query")
+
+# ---------------------------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------------------------
+
+def fetch_json(url, retries=3, timeout=60):
+    """Fetch a URL and return parsed JSON, with retries."""
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "DC-Property-Fetcher/1.0"})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            if attempt < retries - 1:
+                wait = 2 ** attempt
+                print(f"    Retry {attempt+1}/{retries} in {wait}s: {e}")
+                time.sleep(wait)
+            else:
+                raise
+
+
+def build_url(base_url, fields, offset):
+    """Build query URL — f=json, returnGeometry=false."""
     qs = (
-        "where="            + urllib.parse.quote(WHERE, safe="")
-        + "&outFields="     + urllib.parse.quote(FIELDS, safe="")
-        + "&returnGeometry=true"
+        "where="              + urllib.parse.quote(WHERE, safe="")
+        + "&outFields="       + urllib.parse.quote(fields, safe="")
+        + "&returnGeometry=false"
         + "&resultRecordCount=" + str(PAGE_SIZE)
-        + "&resultOffset="  + str(offset)
-        + "&orderByFields=SSL+ASC"
-        + "&f=geojson"
+        + "&resultOffset="    + str(offset)
+        + "&orderByFields="   + urllib.parse.quote("SSL ASC", safe="")
+        + "&f=json"
     )
     return base_url + "?" + qs
 
-def fetch_pages(url, label=""):
-    """Paginate through all records from an ArcGIS REST endpoint."""
-    all_features = []
+
+def attr(feature, *keys):
+    """Get first non-None attribute value from feature."""
+    props = feature.get("attributes") or feature.get("properties") or {}
+    for k in keys:
+        v = props.get(k)
+        if v is not None and v != "":
+            return v
+    return None
+
+# ---------------------------------------------------------------------------
+# MAIN FETCH
+# ---------------------------------------------------------------------------
+
+def fetch_all_features(base_url, fields, label):
+    """Page through all results from a given endpoint."""
+    features = []
     offset = 0
-    page = 0
+
     while True:
-        page += 1
-        full_url = build_url(url, offset)
-        if page == 1:
-            print(f"  {label} URL: {full_url[:120]}…")
-        print(f"  {label} page {page} (offset {offset}, fetched {len(all_features)} so far)…", end=" ", flush=True)
-        with urllib.request.urlopen(full_url, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        url = build_url(base_url, fields, offset)
+        print(f"  {label} page (offset {offset}, fetched {len(features)} so far)...")
+
+        data = fetch_json(url)
+
+        # Check for API error
         if "error" in data:
-            raise RuntimeError(f"API error: {data['error']}")
-        features = data.get("features", [])
-        all_features.extend(features)
-        # Log geometry of first feature on page 1 for debugging
-        if page == 1 and features:
-            print(f"got {len(features)}, geom[0]={features[0].get('geometry')}")
-        else:
-            print(f"got {len(features)}")
-        if len(features) < PAGE_SIZE or not data.get("exceededTransferLimit", True):
+            raise Exception(f"API error: {data['error']}")
+
+        batch = data.get("features", [])
+        if not batch:
             break
+
+        features.extend(batch)
         offset += PAGE_SIZE
-        time.sleep(0.3)
-    return all_features
 
-def compute_score(p):
-    """Investment score: 4 factors. Returns 0–100."""
-    factors = {}
+        # If we got fewer than PAGE_SIZE, we've reached the end
+        exceeded = data.get("exceededTransferLimit", False)
+        if len(batch) < PAGE_SIZE and not exceeded:
+            break
 
-    # 1. Price-per-unit (40 pts) — lower is better for value
-    if p["num_units"] > 0 and p["sale_price"] > 0:
-        ppu = p["sale_price"] / p["num_units"]
-        if   ppu < 100_000:  s = 100
-        elif ppu < 200_000:  s = 85
-        elif ppu < 300_000:  s = 70
-        elif ppu < 400_000:  s = 55
-        elif ppu < 600_000:  s = 40
-        elif ppu < 800_000:  s = 25
-        elif ppu < 1_200_000:s = 15
-        else:                s = 5
-        factors["ppu"] = {"score": s, "value": int(ppu)}
-    else:
-        factors["ppu"] = {"score": 50, "value": 0}
+    return features
 
-    # 2. Condition/Grade (25 pts)
-    grade_scores = {
-        "Exceptional": 20, "Above Average": 40, "Good": 60,
-        "Average": 75, "Below Average": 90, "Poor": 100,
-        "Unsatisfactory": 100, "Neglected": 100,
-    }
-    g = (p.get("grade") or "").strip()
-    factors["grade"] = {"score": grade_scores.get(g, 65), "value": g or "Unknown"}
 
-    # 3. Lot-to-building ratio (20 pts) — higher = more development potential
-    if p["gba_sqft"] > 0 and p["land_sqft"] > 0:
-        ratio = p["land_sqft"] / p["gba_sqft"]
-        if   ratio >= 4.0: s = 100
-        elif ratio >= 2.5: s = 85
-        elif ratio >= 1.5: s = 65
-        elif ratio >= 1.0: s = 45
-        elif ratio >= 0.5: s = 25
-        else:              s = 10
-        factors["ratio"] = {"score": s, "value": round(ratio, 2)}
-    else:
-        factors["ratio"] = {"score": 50, "value": 0}
+def process_features(features):
+    """Convert raw CAMA features into property dicts (no address yet)."""
+    properties = []
+    skipped = 0
 
-    # 4. Metro proximity (15 pts) — closer is better
-    _, miles = nearest_metro(p["lat"], p["lng"])
-    if   miles <= 0.25: s = 100
-    elif miles <= 0.5:  s = 85
-    elif miles <= 0.75: s = 70
-    elif miles <= 1.0:  s = 55
-    elif miles <= 1.5:  s = 35
-    elif miles <= 2.5:  s = 20
-    else:               s = 5
-    factors["metro"] = {"score": s, "value": round(miles, 2)}
+    for f in features:
+        ssl = attr(f, "SSL")
+        if not ssl:
+            skipped += 1
+            continue
 
-    composite = round(
-        factors["ppu"]["score"]   * 0.40 +
-        factors["grade"]["score"] * 0.25 +
-        factors["ratio"]["score"] * 0.20 +
-        factors["metro"]["score"] * 0.15
-    )
-    return {"composite": composite, "factors": factors}
+        units      = attr(f, "NUM_UNITS") or 0
+        bldg_area  = attr(f, "GBA") or 0
+        land_area  = attr(f, "LANDAREA") or 0
+        grade_d    = attr(f, "GRADE_D") or ""
+        cndtn_d    = attr(f, "CNDTN_D") or ""
+        usecode    = attr(f, "USECODE") or ""
+        year_built = attr(f, "AYB") or 0
+
+        # Combine grade + condition using the descriptive fields
+        cond_grade = ""
+        if grade_d and cndtn_d:
+            cond_grade = f"{grade_d} / {cndtn_d}"
+        elif grade_d:
+            cond_grade = str(grade_d)
+        elif cndtn_d:
+            cond_grade = str(cndtn_d)
+
+        properties.append({
+            "ssl":        ssl.strip(),
+            "address":    "",       # filled by enrichment
+            "ward":       "",       # filled by enrichment
+            "units":      int(units) if units else 0,
+            "assessed":   0,        # filled by enrichment
+            "landArea":   int(land_area) if land_area else 0,
+            "bldgArea":   int(bldg_area) if bldg_area else 0,
+            "condGrade":  cond_grade,
+            "useCode":    str(int(usecode)).strip() if usecode else "",
+            "yearBuilt":  int(year_built) if year_built else 0,
+            "owner":      "",       # filled by enrichment
+        })
+
+    return properties, skipped
+
+
+def enrich_from_tax(properties):
+    """Batch-query the Tax Extract for address, ward, assessed value, and owner."""
+    ssl_map = {}
+    for p in properties:
+        if p["ssl"]:
+            ssl_map[p["ssl"]] = p
+
+    if not ssl_map:
+        return 0
+
+    ssl_list = list(ssl_map.keys())
+    enriched = 0
+    batch_size = 50
+
+    print(f"  Querying Tax Extract for {len(ssl_list)} SSLs in batches of {batch_size}...")
+
+    for i in range(0, len(ssl_list), batch_size):
+        batch = ssl_list[i:i+batch_size]
+        ssl_clause = ",".join(f"'{s}'" for s in batch)
+        where = f"SSL IN ({ssl_clause})"
+
+        qs = (
+            "where="           + urllib.parse.quote(where, safe="")
+            + "&outFields="    + urllib.parse.quote(TAX_FIELDS, safe="")
+            + "&returnGeometry=false"
+            + "&resultRecordCount=" + str(batch_size)
+            + "&f=json"
+        )
+        url = TAX_URL + "?" + qs
+
+        try:
+            data = fetch_json(url)
+            feats = data.get("features", [])
+            for f in feats:
+                a = f.get("attributes") or f.get("properties") or {}
+                ssl = (a.get("SSL") or "").strip()
+                if ssl not in ssl_map:
+                    continue
+
+                p = ssl_map[ssl]
+                addr  = (a.get("PREMISEADD") or "").strip()
+                ward  = a.get("WARD")
+                asmnt = a.get("ASSESSMENT")
+                owner = (a.get("OWNERNAME") or "").strip()
+
+                if addr:  p["address"]  = addr
+                if ward:  p["ward"]     = str(ward).strip()
+                if asmnt: p["assessed"] = int(asmnt)
+                if owner: p["owner"]    = owner
+
+                enriched += 1
+
+        except Exception as e:
+            print(f"    Batch failed (offset {i}): {e}")
+            continue
+
+        # Progress indicator
+        done = min(i + batch_size, len(ssl_list))
+        if done % 500 < batch_size or done == len(ssl_list):
+            print(f"    Progress: {done}/{len(ssl_list)} SSLs queried")
+
+    return enriched
+
+# ---------------------------------------------------------------------------
+# RUN
+# ---------------------------------------------------------------------------
 
 def main():
     print("=" * 60)
     print("DC Multifamily Property Fetcher")
     print("=" * 60)
+    print()
 
-    # ── Step 1: Fetch CAMA property data ────────────────────────────────────
-    print("\n[1/3] Fetching CAMA residential data…")
-    raw_features = []
-    is_point = False
+    # Step 1: Fetch building data from CAMA layer
+    print("[1/3] Fetching CAMA residential data...")
+    features = []
 
-    # Try polygon layer first (DCGIS_DATA — geometry reliably returned)
     try:
-        raw_features = fetch_pages(POLY_URL, label="MapServer/25 polygon")
-        first = raw_features[0] if raw_features else None
-        has_geom = first and first.get("geometry") is not None
-        if has_geom:
-            print(f"  ✓ Polygon layer — got {len(raw_features)} features with geometry")
-        else:
-            print(f"  ✗ Polygon layer returned {len(raw_features)} features but geometry=None — trying point layer…")
-            raw_features = []
+        print(f"  Trying polygon layer (MapServer/25)...")
+        features = fetch_all_features(POLY_URL, CAMA_FIELDS, "Polygon")
+        print(f"  Got {len(features)} features from polygon layer")
     except Exception as e:
-        print(f"  ✗ Polygon layer failed: {e} — trying point layer…")
+        print(f"  Polygon layer failed: {e}")
 
-    # Fall back to point layer (DCGIS_APPS) if polygon layer failed or had no geometry
-    if not raw_features:
+    if not features:
         try:
-            raw_features = fetch_pages(POINT_URL, label="MapServer/4 point")
-            first = raw_features[0] if raw_features else None
-            if first and first.get("geometry") and first["geometry"].get("x") is not None:
-                is_point = True
-                print(f"  ✓ Point layer — got {len(raw_features)} features with geometry")
-            else:
-                print(f"  ✗ Point layer also returned no geometry. Both endpoints failed.")
+            print(f"  Trying point layer (MapServer/4)...")
+            features = fetch_all_features(POINT_URL, CAMA_FIELDS, "Point")
+            print(f"  Got {len(features)} features from point layer")
         except Exception as e:
-            print(f"  ✗ Point layer failed: {e}")
+            print(f"  Point layer also failed: {e}")
+            print("  ERROR: Could not fetch data from either endpoint.")
+            sys.exit(1)
 
-    print(f"  Raw features: {len(raw_features)}")
+    print(f"  Total raw features: {len(features)}")
+    print()
 
-    # ── Step 2: Transform CAMA features ─────────────────────────────────────
-    print("\n[2/3] Processing features…")
-    props = []
-    skipped = 0
-    for i, f in enumerate(raw_features):
-        # GeoJSON uses "properties"; ArcGIS JSON uses "attributes" — support both
-        a = f.get("properties") or f.get("attributes") or {}
-        # Skip secondary buildings on same lot
-        if a.get("BLDG_NUM") not in (None, 0, 1):
-            skipped += 1
-            continue
-        # Get coordinates — handle GeoJSON and legacy ArcGIS JSON formats
-        geom = f.get("geometry")
-        if not geom:
-            skipped += 1
-            continue
-        lat = lng = None
-        gtype = geom.get("type", "")
-        coords_field = geom.get("coordinates")
-        if gtype == "Point" and coords_field and len(coords_field) >= 2:
-            lng, lat = coords_field[0], coords_field[1]
-        elif gtype == "Polygon" and coords_field and coords_field[0]:
-            c = poly_center([coords_field[0]])
-            if c: lng, lat = c
-        elif gtype == "MultiPolygon" and coords_field and coords_field[0] and coords_field[0][0]:
-            c = poly_center([coords_field[0][0]])
-            if c: lng, lat = c
-        elif geom.get("x") is not None and geom.get("y") is not None:
-            lng, lat = geom["x"], geom["y"]
-        elif geom.get("rings"):
-            c = poly_center(geom["rings"])
-            if c: lng, lat = c
-        if lat is None or lng is None:
-            skipped += 1
-            continue
+    # Step 2: Process into property records
+    print("[2/3] Processing features...")
+    properties, skipped = process_features(features)
+    print(f"  Valid properties: {len(properties)}")
+    print(f"  Skipped (no SSL): {skipped}")
+    print()
 
-        # Skip if coordinates look wrong for DC (rough bounding box)
-        if not (38.7 < lat < 39.1 and -77.2 < lng < -76.9):
-            skipped += 1
-            continue
+    # Step 3: Enrich with address, ward, assessed value, owner from Tax Extract
+    print(f"[3/3] Enriching {len(properties)} properties from Tax Extract...")
+    enriched = enrich_from_tax(properties)
+    print(f"  Enriched {enriched} properties with address/ward/assessed/owner")
 
-        ssl = (a.get("SSL") or "").strip()
-        usecode = a.get("USECODE") or 0
-        is_vacant = usecode in (89, 91, 92)
-        use_type = "Vacant Lot" if is_vacant else USECODE_MAP.get(usecode, "Multifamily")
+    # Remove properties that didn't get an address (no matching tax record)
+    before = len(properties)
+    properties = [p for p in properties if p["address"]]
+    removed = before - len(properties)
+    if removed:
+        print(f"  Removed {removed} properties with no address match")
+    print()
 
-        sale_ts = a.get("SALEDATE")
-        sale_date = ""
-        if sale_ts:
-            try:
-                dt = datetime.fromtimestamp(sale_ts / 1000, tz=timezone.utc)
-                sale_date = dt.strftime("%b %Y")
-            except Exception:
-                pass
-
-        p = {
-            "id": f"P{i}",
-            "ssl": ssl,
-            "address": f"SSL: {ssl}" if ssl else "DC Property",
-            "ward": 0,
-            "neighborhood": "DC",
-            "lat": round(lat, 6),
-            "lng": round(lng, 6),
-            "num_units":  int(a.get("NUM_UNITS") or 0),
-            "stories":    int(a.get("STORIES")   or 0),
-            "year_built": int(a.get("AYB")        or 0) or None,
-            "gba_sqft":   int(a.get("GBA")        or 0),
-            "land_sqft":  int(a.get("LANDAREA")   or 0),
-            "sale_price": int(a.get("PRICE")      or 0),
-            "sale_date":  sale_date,
-            "use_type":   use_type,
-            "grade":      a.get("GRADE_D") or "",
-            "zoning":     "",
-            "owner":      "",
-            "owner_address": "",
-            "assessment": 0,
-            "tax": 0,
-        }
-        p["score"] = compute_score(p)
-        props.append(p)
-
-    print(f"  Valid: {len(props)}, Skipped: {skipped}")
-
-    # ── Step 3: Enrich with Tax Extract (owner, address, ward, zoning) ──────
-    print(f"\n[3/3] Enriching {len(props)} properties with owner/tax data…")
-    ssl_index = {p["ssl"]: p for p in props if p["ssl"]}
-    ssls = list(ssl_index.keys())
-    enriched = 0
-
-    for batch_start in range(0, len(ssls), 100):
-        batch = ssls[batch_start:batch_start + 100]
-        quoted = ",".join(f"'{s}'" for s in batch)
-        params = {
-            "where": f"SSL IN ({quoted})",
-            "outFields": "SSL,OWNERNAME,ADDRESS,ZIPCODE,WARD,ZONING,ASSESSMENT,TAX",
-            "returnGeometry": "false",
-            "outSR": "4326",
-            "resultRecordCount": 200,
-            "f": "json",
-        }
-        try:
-            full_url = f"{TAX_URL}?{urllib.parse.urlencode(params)}"
-            with urllib.request.urlopen(full_url, timeout=30) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            for feat in data.get("features", []):
-                a = feat.get("attributes", {})
-                ssl = (a.get("SSL") or "").strip()
-                if ssl in ssl_index:
-                    p = ssl_index[ssl]
-                    if a.get("OWNERNAME"):  p["owner"]          = a["OWNERNAME"]
-                    if a.get("ADDRESS"):    p["owner_address"]  = a["ADDRESS"]
-                    if a.get("WARD"):       p["ward"]           = int(a["WARD"])
-                    if a.get("ZONING"):     p["zoning"]         = a["ZONING"]
-                    if a.get("ASSESSMENT"): p["assessment"]     = int(a["ASSESSMENT"])
-                    if a.get("TAX"):        p["tax"]            = int(a["TAX"])
-                    enriched += 1
-        except Exception as e:
-            print(f"  ⚠ Tax batch {batch_start//100 + 1} failed: {e}")
-        progress = min(batch_start + 100, len(ssls))
-        print(f"  Tax data: {progress}/{len(ssls)} SSLs processed…", end="\r")
-        time.sleep(0.2)
-
-    # Re-score with enriched data
-    for p in props:
-        p["score"] = compute_score(p)
-
-    print(f"\n  ✓ Enriched {enriched} properties with owner/tax data")
-
-    # ── Save output ──────────────────────────────────────────────────────────
-    out_dir = os.path.join(os.path.dirname(__file__), "..", "data")
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "properties.json")
+    # Save
+    os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 
     output = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "count": len(props),
-        "source": "DC Open Data — CAMA Residential + ITS Tax Extract",
-        "properties": props,
+        "count": len(properties),
+        "source": "DC Open Data — CAMA Residential (MapServer/25) + Tax Extract (MapServer/53)",
+        "properties": properties,
     }
 
-    with open(out_path, "w") as f:
+    with open(OUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, separators=(",", ":"))
 
-    size_kb = os.path.getsize(out_path) / 1024
-    print(f"\n{'=' * 60}")
-    print(f"✓ Saved {len(props)} properties → {out_path}")
-    print(f"  File size: {size_kb:.0f} KB")
+    file_size = os.path.getsize(OUT_FILE) / 1024
+    print("=" * 60)
+    print(f"Saved {len(properties)} properties -> {OUT_FILE}")
+    print(f"  File size: {file_size:.0f} KB")
     print(f"  Updated:   {output['updated']}")
     print("=" * 60)
-    print("\nNext steps:")
-    print("  1. Open GitHub Desktop")
-    print("  2. Commit 'data/properties.json'")
-    print("  3. Push to GitHub → tgrepe.com updates automatically")
+
 
 if __name__ == "__main__":
     main()

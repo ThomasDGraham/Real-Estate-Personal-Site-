@@ -29,7 +29,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_FILE   = os.path.join(SCRIPT_DIR, "..", "data", "properties.json")
 
 PAGE_SIZE = 2000
-WHERE     = "NUM_UNITS >= 2"
+WHERE     = "NUM_UNITS >= 4"
 
 # Fields that ACTUALLY EXIST on MapServer/25 (CAMA polygon layer)
 CAMA_FIELDS = ",".join([

@@ -6,6 +6,8 @@
 <title>Thomas | Real Estate & Development</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg-primary: #0C0F0A;
@@ -417,6 +419,100 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ===================== VACANT MAP PAGE ===================== */
+  #vacant.page { min-height: 100vh; }
+  #vacant.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .vac-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1.5rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    z-index: 50;
+    flex-shrink: 0;
+  }
+
+  .vac-status {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .vac-status span { color: var(--accent); font-weight: 600; }
+
+  .vac-legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .vac-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .vac-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .vac-dot.residential { background: var(--red); }
+  .vac-dot.mixed { background: var(--yellow); }
+
+  #vacant-map {
+    flex: 1;
+    background: #0a0d0a;
+  }
+
+  /* Leaflet overrides for dark theme */
+  .leaflet-control-attribution { background: rgba(12,15,10,0.8) !important; color: #6b7068 !important; font-size: 10px !important; }
+  .leaflet-control-attribution a { color: #9CA396 !important; }
+  .leaflet-control-zoom a {
+    background: #1A1F1A !important;
+    color: var(--accent) !important;
+    border-color: var(--border) !important;
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+  }
+
+  .leaflet-popup-tip { background: var(--bg-secondary) !important; }
+
+  .leaflet-popup-close-button { color: var(--text-secondary) !important; }
+
+  .vac-popup-addr {
+    font-weight: 600;
+    font-size: 0.88rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .vac-popup-row {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .vac-popup-row span { color: var(--text-primary); font-weight: 500; }
+
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
@@ -440,6 +536,7 @@
     <button class="nav-tab active" onclick="showPage('home')">Home</button>
     <button class="nav-tab" onclick="showPage('about')">About</button>
     <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+    <button class="nav-tab" onclick="showPage('vacant')">Vacant Map</button>
   </div>
 </nav>
 
@@ -571,6 +668,18 @@
 
 </div>
 
+<!-- ==================== VACANT & BLIGHTED MAP ==================== -->
+<div id="vacant" class="page">
+  <div class="vac-toolbar">
+    <div class="vac-status" id="vac-status">Loading vacant properties...</div>
+    <div class="vac-legend">
+      <div class="vac-legend-item"><div class="vac-dot residential"></div> Residential</div>
+      <div class="vac-legend-item"><div class="vac-dot mixed"></div> Mixed Use</div>
+    </div>
+  </div>
+  <div id="vacant-map"></div>
+</div>
+
 <script>
 // ============================================================
 // STATE
@@ -579,6 +688,8 @@ let allProperties = [];
 let sortKey = 'address';
 let sortAsc = true;
 let dashboardLoaded = false;
+let vacantMapLoaded = false;
+let vacantMap = null;
 
 // ============================================================
 // PAGE NAVIGATION
@@ -590,12 +701,19 @@ function showPage(pageId) {
   document.getElementById(pageId).classList.add('active');
 
   const tabs = document.querySelectorAll('.nav-tab');
-  const tabMap = { home: 0, about: 1, dashboard: 2 };
+  const tabMap = { home: 0, about: 1, dashboard: 2, vacant: 3 };
   tabs[tabMap[pageId]].classList.add('active');
 
   if (pageId === 'dashboard' && !dashboardLoaded) {
     dashboardLoaded = true;
     loadData();
+  }
+
+  if (pageId === 'vacant' && !vacantMapLoaded) {
+    vacantMapLoaded = true;
+    initVacantMap();
+  } else if (pageId === 'vacant' && vacantMap) {
+    setTimeout(() => vacantMap.invalidateSize(), 150);
   }
 }
 
@@ -744,6 +862,87 @@ function exportToExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'DC Multifamily');
   XLSX.writeFile(wb, 'DC_Multifamily_Properties.xlsx');
+}
+
+// ============================================================
+// VACANT & BLIGHTED MAP
+// ============================================================
+async function initVacantMap() {
+  // Create map centered on DC
+  vacantMap = L.map('vacant-map', {
+    center: [38.9072, -77.0369],
+    zoom: 12,
+    zoomControl: true,
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    maxZoom: 19,
+  }).addTo(vacantMap);
+
+  // Load GeoJSON
+  try {
+    const resp = await fetch('data/vacant_blighted.geojson');
+    if (!resp.ok) throw new Error('File not found');
+    const geojson = await resp.json();
+    const features = geojson.features || [];
+
+    // Filter: only RESIDENTIAL and MIXED USE
+    const filtered = features.filter(f => {
+      const rtype = (f.properties.RESIDENTIAL_TYPE || '').toUpperCase();
+      return rtype === 'RESIDENTIAL' || rtype === 'MIXED USE';
+    });
+
+    let count = 0;
+
+    filtered.forEach(f => {
+      const p = f.properties;
+      const coords = f.geometry && f.geometry.coordinates;
+      if (!coords || coords.length < 2) return;
+
+      const lat = coords[1];
+      const lng = coords[0];
+
+      // Sanity check: must be in DC area
+      if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return;
+
+      const rtype = (p.RESIDENTIAL_TYPE || '').toUpperCase();
+      const isResidential = rtype === 'RESIDENTIAL';
+      const color = isResidential ? '#c0392b' : '#d4a017';
+
+      const units = p.HOUSING_UNIT_COUNT || 0;
+      const ward = p.WARD || '—';
+      const addr = p.ADDRESS || '—';
+      const ssl = p.SSL || '—';
+      const beginDate = p.BEGIN_DATE ? p.BEGIN_DATE.split('T')[0] : '—';
+
+      const popupHtml =
+        '<div class="vac-popup-addr">' + addr + '</div>'
+        + '<div class="vac-popup-row">Type: <span>' + p.RESIDENTIAL_TYPE + '</span></div>'
+        + '<div class="vac-popup-row">Ward: <span>' + ward + '</span></div>'
+        + '<div class="vac-popup-row">Units: <span>' + units + '</span></div>'
+        + '<div class="vac-popup-row">SSL: <span>' + ssl + '</span></div>'
+        + '<div class="vac-popup-row">Vacant Since: <span>' + beginDate + '</span></div>';
+
+      L.circleMarker([lat, lng], {
+        radius: 6,
+        fillColor: color,
+        color: color,
+        weight: 1,
+        opacity: 0.9,
+        fillOpacity: 0.7,
+      }).bindPopup(popupHtml, { maxWidth: 280 }).addTo(vacantMap);
+
+      count++;
+    });
+
+    document.getElementById('vac-status').innerHTML =
+      '<span>' + count.toLocaleString() + '</span> vacant &amp; blighted residential properties in DC';
+
+  } catch (e) {
+    document.getElementById('vac-status').textContent = 'Error loading vacant property data: ' + e.message;
+  }
 }
 </script>
 

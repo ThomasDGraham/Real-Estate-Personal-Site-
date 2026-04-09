@@ -18,13 +18,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run data fetch script
+      - name: Run table data fetch script
         run: python scripts/fetch_dc_data.py
+
+      - name: Run multifamily map builder
+        run: python scripts/build_multifamily_map.py
 
       - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/properties.json
+          git add data/properties.json data/multifamily_map.geojson
           git diff --cached --quiet || git commit -m "Auto-refresh DC property data [$(date -u +%Y-%m-%d)]"
           git push

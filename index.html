@@ -513,6 +513,79 @@
 
   .vac-popup-row span { color: var(--text-primary); font-weight: 500; }
 
+  /* ===================== MULTIFAMILY MAP PAGE ===================== */
+  #mfmap.page { min-height: 100vh; }
+  #mfmap.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .mf-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1.5rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    z-index: 50;
+    flex-shrink: 0;
+  }
+
+  .mf-status {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .mf-status span { color: var(--accent); font-weight: 600; }
+
+  #mf-map {
+    flex: 1;
+    background: #0a0d0a;
+  }
+
+  /* Multifamily popup — wider for detailed info */
+  .mf-popup { min-width: 280px; }
+
+  .mf-popup-addr {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+  }
+
+  .mf-popup-section {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 0.6rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .mf-popup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.15rem 1rem;
+  }
+
+  .mf-popup-row {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .mf-popup-row span { color: var(--text-primary); font-weight: 500; }
+
+  .mf-popup-row.full { grid-column: 1 / -1; }
+
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
@@ -535,7 +608,8 @@
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('home')">Home</button>
     <button class="nav-tab" onclick="showPage('about')">About</button>
-    <button class="nav-tab" onclick="showPage('dashboard')">Dashboard</button>
+    <button class="nav-tab" onclick="showPage('dashboard')">Multifamily Property Data</button>
+    <button class="nav-tab" onclick="showPage('mfmap')">Multifamily Map</button>
     <button class="nav-tab" onclick="showPage('vacant')">Vacant Map</button>
   </div>
 </nav>
@@ -668,6 +742,14 @@
 
 </div>
 
+<!-- ==================== MULTIFAMILY MAP ==================== -->
+<div id="mfmap" class="page">
+  <div class="mf-toolbar">
+    <div class="mf-status" id="mf-status">Loading multifamily properties...</div>
+  </div>
+  <div id="mf-map"></div>
+</div>
+
 <!-- ==================== VACANT & BLIGHTED MAP ==================== -->
 <div id="vacant" class="page">
   <div class="vac-toolbar">
@@ -690,6 +772,8 @@ let sortAsc = true;
 let dashboardLoaded = false;
 let vacantMapLoaded = false;
 let vacantMap = null;
+let mfMapLoaded = false;
+let mfMap = null;
 
 // ============================================================
 // PAGE NAVIGATION
@@ -701,12 +785,19 @@ function showPage(pageId) {
   document.getElementById(pageId).classList.add('active');
 
   const tabs = document.querySelectorAll('.nav-tab');
-  const tabMap = { home: 0, about: 1, dashboard: 2, vacant: 3 };
+  const tabMap = { home: 0, about: 1, dashboard: 2, mfmap: 3, vacant: 4 };
   tabs[tabMap[pageId]].classList.add('active');
 
   if (pageId === 'dashboard' && !dashboardLoaded) {
     dashboardLoaded = true;
     loadData();
+  }
+
+  if (pageId === 'mfmap' && !mfMapLoaded) {
+    mfMapLoaded = true;
+    initMfMap();
+  } else if (pageId === 'mfmap' && mfMap) {
+    setTimeout(() => mfMap.invalidateSize(), 150);
   }
 
   if (pageId === 'vacant' && !vacantMapLoaded) {
@@ -862,6 +953,123 @@ function exportToExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'DC Multifamily');
   XLSX.writeFile(wb, 'DC_Multifamily_Properties.xlsx');
+}
+
+// ============================================================
+// MULTIFAMILY MAP
+// ============================================================
+function fmtDollarMap(n) {
+  if (!n) return '—';
+  return '$' + Number(n).toLocaleString();
+}
+
+function fmtNum(n) {
+  if (!n && n !== 0) return '—';
+  return Number(n).toLocaleString();
+}
+
+async function initMfMap() {
+  mfMap = L.map('mf-map', {
+    center: [38.9072, -77.0369],
+    zoom: 12,
+    zoomControl: true,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    maxZoom: 19,
+  }).addTo(mfMap);
+
+  try {
+    const resp = await fetch('data/multifamily_map.geojson');
+    if (!resp.ok) throw new Error('File not found — run scripts/build_multifamily_map.py first');
+    const geojson = await resp.json();
+    const features = geojson.features || [];
+
+    let count = 0;
+
+    features.forEach(f => {
+      const p = f.properties;
+      const coords = f.geometry && f.geometry.coordinates;
+      if (!coords || coords.length < 2) return;
+
+      const lat = coords[1];
+      const lng = coords[0];
+      if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return;
+
+      // Color by unit count
+      const units = p.units || 0;
+      let color = '#C4A35A'; // default gold/accent
+      if (units >= 50) color = '#e74c3c';       // red — large
+      else if (units >= 20) color = '#e67e22';   // orange
+      else if (units >= 10) color = '#d4a017';   // yellow
+      else if (units >= 5) color = '#27ae60';    // green
+      else color = '#3498db';                     // blue — small
+
+      const radius = Math.min(3 + Math.sqrt(units) * 1.2, 14);
+
+      // Build detailed popup
+      const saleDate = p.saleDate || '—';
+      const popup = '<div class="mf-popup">'
+        + '<div class="mf-popup-addr">' + (p.address || '—') + '</div>'
+
+        + '<div class="mf-popup-section">Property Overview</div>'
+        + '<div class="mf-popup-grid">'
+        + '<div class="mf-popup-row">Ward: <span>' + (p.ward || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Units: <span>' + fmtNum(p.units) + '</span></div>'
+        + '<div class="mf-popup-row">Bedrooms: <span>' + fmtNum(p.bedrooms) + '</span></div>'
+        + '<div class="mf-popup-row">Bathrooms: <span>' + fmtNum(p.bathrooms) + (p.halfBaths ? ' + ' + p.halfBaths + ' half' : '') + '</span></div>'
+        + '<div class="mf-popup-row">Stories: <span>' + (p.stories || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Use Code: <span>' + (p.useCode || '—') + '</span></div>'
+        + '</div>'
+
+        + '<div class="mf-popup-section">Building Details</div>'
+        + '<div class="mf-popup-grid">'
+        + '<div class="mf-popup-row">Bldg Area: <span>' + fmtNum(p.gba) + ' sf</span></div>'
+        + '<div class="mf-popup-row">Land Area: <span>' + fmtNum(p.landArea) + ' sf</span></div>'
+        + '<div class="mf-popup-row">Grade: <span>' + (p.grade || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Condition: <span>' + (p.condition || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Style: <span>' + (p.style || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Structure: <span>' + (p.structure || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Ext. Wall: <span>' + (p.extWall || '—') + '</span></div>'
+        + '<div class="mf-popup-row">Roof: <span>' + (p.roof || '—') + '</span></div>'
+        + '</div>'
+
+        + '<div class="mf-popup-section">Sale &amp; Value</div>'
+        + '<div class="mf-popup-grid">'
+        + '<div class="mf-popup-row">Last Sale: <span>' + saleDate + '</span></div>'
+        + '<div class="mf-popup-row">Sale Price: <span>' + fmtDollarMap(p.price) + '</span></div>'
+        + '<div class="mf-popup-row">Assessed: <span>' + fmtDollarMap(p.assessed) + '</span></div>'
+        + '<div class="mf-popup-row">Year Built: <span>' + (p.yearBuilt || '—') + '</span></div>'
+        + '</div>'
+
+        + '<div class="mf-popup-section">Owner</div>'
+        + '<div class="mf-popup-row full">' + (p.owner || '—') + '</div>'
+
+        + '<div style="margin-top:0.5rem;font-size:0.68rem;color:#6b7068;">SSL: ' + (p.ssl || '—') + '</div>'
+        + '</div>';
+
+      L.circleMarker([lat, lng], {
+        radius: radius,
+        fillColor: color,
+        color: color,
+        weight: 1,
+        opacity: 0.9,
+        fillOpacity: 0.65,
+      }).bindPopup(popup, { maxWidth: 340 }).addTo(mfMap);
+
+      count++;
+    });
+
+    const meta = geojson.metadata || {};
+    document.getElementById('mf-status').innerHTML =
+      '<span>' + count.toLocaleString() + '</span> multifamily properties (3+ units)'
+      + (meta.updated ? ' &middot; Updated ' + meta.updated.split('T')[0] : '');
+
+  } catch (e) {
+    document.getElementById('mf-status').innerHTML =
+      'Could not load map data. Run <code style="background:var(--bg-card);padding:0.2rem 0.5rem;border-radius:4px">python scripts/build_multifamily_map.py</code> to generate the data file.';
+  }
 }
 
 // ============================================================

@@ -473,7 +473,6 @@
   .vac-dot.mixed { background: var(--yellow); }
 
   #vacant-map {
-    flex: 1;
     background: #0a0d0a;
   }
 
@@ -544,7 +543,6 @@
   .mf-status span { color: var(--accent); font-weight: 600; }
 
   #mf-map {
-    flex: 1;
     background: #0a0d0a;
   }
 
@@ -586,6 +584,156 @@
 
   .mf-popup-row.full { grid-column: 1 / -1; }
 
+  /* ===================== FILTER PANELS (shared) ===================== */
+  .filter-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: rgba(20, 24, 20, 0.96);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--border);
+    z-index: 100;
+    overflow-y: auto;
+    padding: 1rem 1.2rem 2rem;
+    transition: transform 0.3s ease;
+  }
+
+  .filter-panel.collapsed { transform: translateX(-100%); }
+
+  .filter-toggle {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 110;
+    background: rgba(20, 24, 20, 0.92);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .filter-toggle:hover { background: var(--accent-dim); }
+
+  .filter-panel.collapsed ~ .filter-toggle { left: 10px; }
+  .filter-panel:not(.collapsed) ~ .filter-toggle { left: 290px; }
+
+  .fp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .fp-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .fp-reset {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+  }
+
+  .fp-reset:hover { color: var(--accent); }
+
+  .fp-group { margin-bottom: 0.9rem; }
+
+  .fp-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    display: block;
+  }
+
+  .fp-select, .fp-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .fp-select:focus, .fp-input:focus { border-color: var(--accent); }
+
+  .fp-range-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  .fp-range-row .fp-input { width: 48%; }
+
+  .fp-range-row .fp-dash {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+
+  .fp-apply {
+    width: 100%;
+    margin-top: 0.8rem;
+    background: var(--accent);
+    border: none;
+    color: var(--bg-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.55rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .fp-apply:hover { opacity: 0.85; }
+
+  .fp-count {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+  }
+
+  .fp-count span { color: var(--accent); font-weight: 600; }
+
+  /* Map containers need relative positioning for filter panel */
+  .map-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .map-wrap #mf-map,
+  .map-wrap #vacant-map {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 900px) {
     nav { padding: 1rem 1.5rem; }
@@ -597,6 +745,9 @@
     .dash-toolbar { padding: 0.8rem 1rem; }
     .dash-table { font-size: 0.75rem; }
     .dash-table th, .dash-table td { padding: 0.5rem 0.5rem; }
+    .filter-panel { width: 240px; }
+    .filter-panel:not(.collapsed) ~ .filter-toggle { left: 250px; }
+    .nav-tab { font-size: 0.7rem; padding: 0.5rem 0.8rem; }
   }
 </style>
 </head>
@@ -747,7 +898,84 @@
   <div class="mf-toolbar">
     <div class="mf-status" id="mf-status">Loading multifamily properties...</div>
   </div>
-  <div id="mf-map"></div>
+  <div class="map-wrap">
+    <div class="filter-panel" id="mf-filter-panel">
+      <div class="fp-header">
+        <div class="fp-title">Filters</div>
+        <button class="fp-reset" onclick="resetMfFilters()">Reset All</button>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Ward</label>
+        <select class="fp-select" id="mf-f-ward"><option value="">All Wards</option></select>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Units</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="mf-f-units-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="mf-f-units-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Bedrooms</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="mf-f-bed-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="mf-f-bed-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Year Built</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="mf-f-year-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="mf-f-year-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Assessed Value ($)</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="mf-f-val-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="mf-f-val-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Sale Price ($)</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="mf-f-price-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="mf-f-price-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Grade</label>
+        <select class="fp-select" id="mf-f-grade"><option value="">All Grades</option></select>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Condition</label>
+        <select class="fp-select" id="mf-f-condition"><option value="">All Conditions</option></select>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Use Code</label>
+        <select class="fp-select" id="mf-f-usecode"><option value="">All Use Codes</option></select>
+      </div>
+
+      <button class="fp-apply" onclick="applyMfFilters()">Apply Filters</button>
+      <div class="fp-count" id="mf-filter-count"></div>
+    </div>
+    <button class="filter-toggle" id="mf-filter-toggle" onclick="toggleMfPanel()">Filters</button>
+    <div id="mf-map"></div>
+  </div>
 </div>
 
 <!-- ==================== VACANT & BLIGHTED MAP ==================== -->
@@ -759,7 +987,51 @@
       <div class="vac-legend-item"><div class="vac-dot mixed"></div> Mixed Use</div>
     </div>
   </div>
-  <div id="vacant-map"></div>
+  <div class="map-wrap">
+    <div class="filter-panel" id="vac-filter-panel">
+      <div class="fp-header">
+        <div class="fp-title">Filters</div>
+        <button class="fp-reset" onclick="resetVacFilters()">Reset All</button>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Ward</label>
+        <select class="fp-select" id="vac-f-ward"><option value="">All Wards</option></select>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Property Type</label>
+        <select class="fp-select" id="vac-f-type">
+          <option value="">All Types</option>
+          <option value="RESIDENTIAL">Residential</option>
+          <option value="MIXED USE">Mixed Use</option>
+        </select>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Units</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="vac-f-units-min" type="number" placeholder="Min">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="vac-f-units-max" type="number" placeholder="Max">
+        </div>
+      </div>
+
+      <div class="fp-group">
+        <label class="fp-label">Vacant Since (Year)</label>
+        <div class="fp-range-row">
+          <input class="fp-input" id="vac-f-since-min" type="number" placeholder="From">
+          <span class="fp-dash">—</span>
+          <input class="fp-input" id="vac-f-since-max" type="number" placeholder="To">
+        </div>
+      </div>
+
+      <button class="fp-apply" onclick="applyVacFilters()">Apply Filters</button>
+      <div class="fp-count" id="vac-filter-count"></div>
+    </div>
+    <button class="filter-toggle" id="vac-filter-toggle" onclick="toggleVacPanel()">Filters</button>
+    <div id="vacant-map"></div>
+  </div>
 </div>
 
 <script>
@@ -968,6 +1240,171 @@ function fmtNum(n) {
   return Number(n).toLocaleString();
 }
 
+let mfAllFeatures = [];
+let mfMarkerLayer = null;
+let mfMeta = {};
+
+function toggleMfPanel() {
+  const panel = document.getElementById('mf-filter-panel');
+  panel.classList.toggle('collapsed');
+  setTimeout(() => mfMap && mfMap.invalidateSize(), 350);
+}
+
+function buildMfPopup(p) {
+  const saleDate = p.saleDate || '—';
+  return '<div class="mf-popup">'
+    + '<div class="mf-popup-addr">' + (p.address || '—') + '</div>'
+    + '<div class="mf-popup-section">Property Overview</div>'
+    + '<div class="mf-popup-grid">'
+    + '<div class="mf-popup-row">Ward: <span>' + (p.ward || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Units: <span>' + fmtNum(p.units) + '</span></div>'
+    + '<div class="mf-popup-row">Bedrooms: <span>' + fmtNum(p.bedrooms) + '</span></div>'
+    + '<div class="mf-popup-row">Bathrooms: <span>' + fmtNum(p.bathrooms) + (p.halfBaths ? ' + ' + p.halfBaths + ' half' : '') + '</span></div>'
+    + '<div class="mf-popup-row">Stories: <span>' + (p.stories || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Use Code: <span>' + (p.useCode || '—') + '</span></div>'
+    + '</div>'
+    + '<div class="mf-popup-section">Building Details</div>'
+    + '<div class="mf-popup-grid">'
+    + '<div class="mf-popup-row">Bldg Area: <span>' + fmtNum(p.gba) + ' sf</span></div>'
+    + '<div class="mf-popup-row">Land Area: <span>' + fmtNum(p.landArea) + ' sf</span></div>'
+    + '<div class="mf-popup-row">Grade: <span>' + (p.grade || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Condition: <span>' + (p.condition || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Style: <span>' + (p.style || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Structure: <span>' + (p.structure || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Ext. Wall: <span>' + (p.extWall || '—') + '</span></div>'
+    + '<div class="mf-popup-row">Roof: <span>' + (p.roof || '—') + '</span></div>'
+    + '</div>'
+    + '<div class="mf-popup-section">Sale &amp; Value</div>'
+    + '<div class="mf-popup-grid">'
+    + '<div class="mf-popup-row">Last Sale: <span>' + saleDate + '</span></div>'
+    + '<div class="mf-popup-row">Sale Price: <span>' + fmtDollarMap(p.price) + '</span></div>'
+    + '<div class="mf-popup-row">Assessed: <span>' + fmtDollarMap(p.assessed) + '</span></div>'
+    + '<div class="mf-popup-row">Year Built: <span>' + (p.yearBuilt || '—') + '</span></div>'
+    + '</div>'
+    + '<div class="mf-popup-section">Owner</div>'
+    + '<div class="mf-popup-row full">' + (p.owner || '—') + '</div>'
+    + '<div style="margin-top:0.5rem;font-size:0.68rem;color:#6b7068;">SSL: ' + (p.ssl || '—') + '</div>'
+    + '</div>';
+}
+
+function addMfMarker(f) {
+  const p = f.properties;
+  const coords = f.geometry && f.geometry.coordinates;
+  if (!coords || coords.length < 2) return null;
+  const lat = coords[1], lng = coords[0];
+  if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return null;
+
+  const units = p.units || 0;
+  let color = '#3498db';
+  if (units >= 50) color = '#e74c3c';
+  else if (units >= 20) color = '#e67e22';
+  else if (units >= 10) color = '#d4a017';
+  else if (units >= 5) color = '#27ae60';
+
+  return L.circleMarker([lat, lng], {
+    radius: Math.min(3 + Math.sqrt(units) * 1.2, 14),
+    fillColor: color, color: color,
+    weight: 1, opacity: 0.9, fillOpacity: 0.65,
+  }).bindPopup(buildMfPopup(p), { maxWidth: 340 });
+}
+
+function renderMfMarkers(features) {
+  if (mfMarkerLayer) mfMap.removeLayer(mfMarkerLayer);
+  mfMarkerLayer = L.layerGroup();
+  let count = 0;
+  features.forEach(f => {
+    const m = addMfMarker(f);
+    if (m) { m.addTo(mfMarkerLayer); count++; }
+  });
+  mfMarkerLayer.addTo(mfMap);
+  return count;
+}
+
+function populateMfDropdowns() {
+  const wards = new Set(), grades = new Set(), conditions = new Set(), usecodes = new Set();
+  mfAllFeatures.forEach(f => {
+    const p = f.properties;
+    if (p.ward) wards.add(p.ward);
+    if (p.grade) grades.add(p.grade);
+    if (p.condition) conditions.add(p.condition);
+    if (p.useCode) usecodes.add(p.useCode);
+  });
+
+  const fill = (id, vals) => {
+    const sel = document.getElementById(id);
+    const first = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(first);
+    [...vals].sort().forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      sel.appendChild(opt);
+    });
+  };
+
+  fill('mf-f-ward', wards);
+  fill('mf-f-grade', grades);
+  fill('mf-f-condition', conditions);
+  fill('mf-f-usecode', usecodes);
+}
+
+function applyMfFilters() {
+  const ward = document.getElementById('mf-f-ward').value;
+  const uMin = parseFloat(document.getElementById('mf-f-units-min').value) || 0;
+  const uMax = parseFloat(document.getElementById('mf-f-units-max').value) || Infinity;
+  const bMin = parseFloat(document.getElementById('mf-f-bed-min').value) || 0;
+  const bMax = parseFloat(document.getElementById('mf-f-bed-max').value) || Infinity;
+  const yMin = parseFloat(document.getElementById('mf-f-year-min').value) || 0;
+  const yMax = parseFloat(document.getElementById('mf-f-year-max').value) || Infinity;
+  const vMin = parseFloat(document.getElementById('mf-f-val-min').value) || 0;
+  const vMax = parseFloat(document.getElementById('mf-f-val-max').value) || Infinity;
+  const pMin = parseFloat(document.getElementById('mf-f-price-min').value) || 0;
+  const pMax = parseFloat(document.getElementById('mf-f-price-max').value) || Infinity;
+  const grade = document.getElementById('mf-f-grade').value;
+  const condition = document.getElementById('mf-f-condition').value;
+  const usecode = document.getElementById('mf-f-usecode').value;
+
+  const filtered = mfAllFeatures.filter(f => {
+    const p = f.properties;
+    if (ward && p.ward !== ward) return false;
+    if ((p.units || 0) < uMin || (p.units || 0) > uMax) return false;
+    if ((p.bedrooms || 0) < bMin || (p.bedrooms || 0) > bMax) return false;
+    if ((p.yearBuilt || 0) < yMin || (p.yearBuilt || 0) > yMax) return false;
+    if ((p.assessed || 0) < vMin || (p.assessed || 0) > vMax) return false;
+    if ((p.price || 0) < pMin || (p.price || 0) > pMax) return false;
+    if (grade && p.grade !== grade) return false;
+    if (condition && p.condition !== condition) return false;
+    if (usecode && p.useCode !== usecode) return false;
+    return true;
+  });
+
+  const count = renderMfMarkers(filtered);
+  document.getElementById('mf-status').innerHTML =
+    '<span>' + count.toLocaleString() + '</span> of '
+    + mfAllFeatures.length.toLocaleString() + ' multifamily properties'
+    + (mfMeta.updated ? ' &middot; Updated ' + mfMeta.updated.split('T')[0] : '');
+  document.getElementById('mf-filter-count').innerHTML =
+    'Showing <span>' + count.toLocaleString() + '</span> of ' + mfAllFeatures.length.toLocaleString();
+}
+
+function resetMfFilters() {
+  document.getElementById('mf-f-ward').value = '';
+  document.getElementById('mf-f-units-min').value = '';
+  document.getElementById('mf-f-units-max').value = '';
+  document.getElementById('mf-f-bed-min').value = '';
+  document.getElementById('mf-f-bed-max').value = '';
+  document.getElementById('mf-f-year-min').value = '';
+  document.getElementById('mf-f-year-max').value = '';
+  document.getElementById('mf-f-val-min').value = '';
+  document.getElementById('mf-f-val-max').value = '';
+  document.getElementById('mf-f-price-min').value = '';
+  document.getElementById('mf-f-price-max').value = '';
+  document.getElementById('mf-f-grade').value = '';
+  document.getElementById('mf-f-condition').value = '';
+  document.getElementById('mf-f-usecode').value = '';
+  applyMfFilters();
+}
+
 async function initMfMap() {
   mfMap = L.map('mf-map', {
     center: [38.9072, -77.0369],
@@ -982,89 +1419,17 @@ async function initMfMap() {
 
   try {
     const resp = await fetch('data/multifamily_map.geojson');
-    if (!resp.ok) throw new Error('File not found — run scripts/build_multifamily_map.py first');
+    if (!resp.ok) throw new Error('File not found');
     const geojson = await resp.json();
-    const features = geojson.features || [];
+    mfAllFeatures = geojson.features || [];
+    mfMeta = geojson.metadata || {};
 
-    let count = 0;
+    populateMfDropdowns();
+    const count = renderMfMarkers(mfAllFeatures);
 
-    features.forEach(f => {
-      const p = f.properties;
-      const coords = f.geometry && f.geometry.coordinates;
-      if (!coords || coords.length < 2) return;
-
-      const lat = coords[1];
-      const lng = coords[0];
-      if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return;
-
-      // Color by unit count
-      const units = p.units || 0;
-      let color = '#C4A35A'; // default gold/accent
-      if (units >= 50) color = '#e74c3c';       // red — large
-      else if (units >= 20) color = '#e67e22';   // orange
-      else if (units >= 10) color = '#d4a017';   // yellow
-      else if (units >= 5) color = '#27ae60';    // green
-      else color = '#3498db';                     // blue — small
-
-      const radius = Math.min(3 + Math.sqrt(units) * 1.2, 14);
-
-      // Build detailed popup
-      const saleDate = p.saleDate || '—';
-      const popup = '<div class="mf-popup">'
-        + '<div class="mf-popup-addr">' + (p.address || '—') + '</div>'
-
-        + '<div class="mf-popup-section">Property Overview</div>'
-        + '<div class="mf-popup-grid">'
-        + '<div class="mf-popup-row">Ward: <span>' + (p.ward || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Units: <span>' + fmtNum(p.units) + '</span></div>'
-        + '<div class="mf-popup-row">Bedrooms: <span>' + fmtNum(p.bedrooms) + '</span></div>'
-        + '<div class="mf-popup-row">Bathrooms: <span>' + fmtNum(p.bathrooms) + (p.halfBaths ? ' + ' + p.halfBaths + ' half' : '') + '</span></div>'
-        + '<div class="mf-popup-row">Stories: <span>' + (p.stories || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Use Code: <span>' + (p.useCode || '—') + '</span></div>'
-        + '</div>'
-
-        + '<div class="mf-popup-section">Building Details</div>'
-        + '<div class="mf-popup-grid">'
-        + '<div class="mf-popup-row">Bldg Area: <span>' + fmtNum(p.gba) + ' sf</span></div>'
-        + '<div class="mf-popup-row">Land Area: <span>' + fmtNum(p.landArea) + ' sf</span></div>'
-        + '<div class="mf-popup-row">Grade: <span>' + (p.grade || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Condition: <span>' + (p.condition || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Style: <span>' + (p.style || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Structure: <span>' + (p.structure || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Ext. Wall: <span>' + (p.extWall || '—') + '</span></div>'
-        + '<div class="mf-popup-row">Roof: <span>' + (p.roof || '—') + '</span></div>'
-        + '</div>'
-
-        + '<div class="mf-popup-section">Sale &amp; Value</div>'
-        + '<div class="mf-popup-grid">'
-        + '<div class="mf-popup-row">Last Sale: <span>' + saleDate + '</span></div>'
-        + '<div class="mf-popup-row">Sale Price: <span>' + fmtDollarMap(p.price) + '</span></div>'
-        + '<div class="mf-popup-row">Assessed: <span>' + fmtDollarMap(p.assessed) + '</span></div>'
-        + '<div class="mf-popup-row">Year Built: <span>' + (p.yearBuilt || '—') + '</span></div>'
-        + '</div>'
-
-        + '<div class="mf-popup-section">Owner</div>'
-        + '<div class="mf-popup-row full">' + (p.owner || '—') + '</div>'
-
-        + '<div style="margin-top:0.5rem;font-size:0.68rem;color:#6b7068;">SSL: ' + (p.ssl || '—') + '</div>'
-        + '</div>';
-
-      L.circleMarker([lat, lng], {
-        radius: radius,
-        fillColor: color,
-        color: color,
-        weight: 1,
-        opacity: 0.9,
-        fillOpacity: 0.65,
-      }).bindPopup(popup, { maxWidth: 340 }).addTo(mfMap);
-
-      count++;
-    });
-
-    const meta = geojson.metadata || {};
     document.getElementById('mf-status').innerHTML =
       '<span>' + count.toLocaleString() + '</span> multifamily properties (3+ units)'
-      + (meta.updated ? ' &middot; Updated ' + meta.updated.split('T')[0] : '');
+      + (mfMeta.updated ? ' &middot; Updated ' + mfMeta.updated.split('T')[0] : '');
 
   } catch (e) {
     document.getElementById('mf-status').innerHTML =
@@ -1075,76 +1440,129 @@ async function initMfMap() {
 // ============================================================
 // VACANT & BLIGHTED MAP
 // ============================================================
+let vacAllFeatures = [];
+let vacMarkerLayer = null;
+
+function toggleVacPanel() {
+  const panel = document.getElementById('vac-filter-panel');
+  panel.classList.toggle('collapsed');
+  setTimeout(() => vacantMap && vacantMap.invalidateSize(), 350);
+}
+
+function addVacMarker(f) {
+  const p = f.properties;
+  const coords = f.geometry && f.geometry.coordinates;
+  if (!coords || coords.length < 2) return null;
+  const lat = coords[1], lng = coords[0];
+  if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return null;
+
+  const rtype = (p.RESIDENTIAL_TYPE || '').toUpperCase();
+  const color = rtype === 'RESIDENTIAL' ? '#c0392b' : '#d4a017';
+  const beginDate = p.BEGIN_DATE ? p.BEGIN_DATE.split('T')[0] : '—';
+
+  const popupHtml =
+    '<div class="vac-popup-addr">' + (p.ADDRESS || '—') + '</div>'
+    + '<div class="vac-popup-row">Type: <span>' + (p.RESIDENTIAL_TYPE || '—') + '</span></div>'
+    + '<div class="vac-popup-row">Ward: <span>' + (p.WARD || '—') + '</span></div>'
+    + '<div class="vac-popup-row">Units: <span>' + (p.HOUSING_UNIT_COUNT || 0) + '</span></div>'
+    + '<div class="vac-popup-row">SSL: <span>' + (p.SSL || '—') + '</span></div>'
+    + '<div class="vac-popup-row">Vacant Since: <span>' + beginDate + '</span></div>';
+
+  return L.circleMarker([lat, lng], {
+    radius: 6, fillColor: color, color: color,
+    weight: 1, opacity: 0.9, fillOpacity: 0.7,
+  }).bindPopup(popupHtml, { maxWidth: 280 });
+}
+
+function renderVacMarkers(features) {
+  if (vacMarkerLayer) vacantMap.removeLayer(vacMarkerLayer);
+  vacMarkerLayer = L.layerGroup();
+  let count = 0;
+  features.forEach(f => {
+    const m = addVacMarker(f);
+    if (m) { m.addTo(vacMarkerLayer); count++; }
+  });
+  vacMarkerLayer.addTo(vacantMap);
+  return count;
+}
+
+function applyVacFilters() {
+  const ward = document.getElementById('vac-f-ward').value;
+  const type = document.getElementById('vac-f-type').value;
+  const uMin = parseFloat(document.getElementById('vac-f-units-min').value) || 0;
+  const uMax = parseFloat(document.getElementById('vac-f-units-max').value) || Infinity;
+  const sMin = parseFloat(document.getElementById('vac-f-since-min').value) || 0;
+  const sMax = parseFloat(document.getElementById('vac-f-since-max').value) || Infinity;
+
+  const filtered = vacAllFeatures.filter(f => {
+    const p = f.properties;
+    if (ward && (p.WARD || '').toString() !== ward) return false;
+    if (type && (p.RESIDENTIAL_TYPE || '').toUpperCase() !== type) return false;
+    const units = p.HOUSING_UNIT_COUNT || 0;
+    if (units < uMin || units > uMax) return false;
+    if (p.BEGIN_DATE) {
+      const yr = parseInt(p.BEGIN_DATE.substring(0, 4));
+      if (yr < sMin || yr > sMax) return false;
+    }
+    return true;
+  });
+
+  const count = renderVacMarkers(filtered);
+  document.getElementById('vac-status').innerHTML =
+    '<span>' + count.toLocaleString() + '</span> of '
+    + vacAllFeatures.length.toLocaleString() + ' vacant &amp; blighted properties';
+  document.getElementById('vac-filter-count').innerHTML =
+    'Showing <span>' + count.toLocaleString() + '</span> of ' + vacAllFeatures.length.toLocaleString();
+}
+
+function resetVacFilters() {
+  document.getElementById('vac-f-ward').value = '';
+  document.getElementById('vac-f-type').value = '';
+  document.getElementById('vac-f-units-min').value = '';
+  document.getElementById('vac-f-units-max').value = '';
+  document.getElementById('vac-f-since-min').value = '';
+  document.getElementById('vac-f-since-max').value = '';
+  applyVacFilters();
+}
+
 async function initVacantMap() {
-  // Create map centered on DC
   vacantMap = L.map('vacant-map', {
     center: [38.9072, -77.0369],
     zoom: 12,
     zoomControl: true,
   });
 
-  // Dark tile layer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap &copy; CARTO',
     maxZoom: 19,
   }).addTo(vacantMap);
 
-  // Load GeoJSON
   try {
     const resp = await fetch('data/vacant_blighted.geojson');
     if (!resp.ok) throw new Error('File not found');
     const geojson = await resp.json();
     const features = geojson.features || [];
 
-    // Filter: only RESIDENTIAL and MIXED USE
-    const filtered = features.filter(f => {
+    // Pre-filter: only RESIDENTIAL and MIXED USE
+    vacAllFeatures = features.filter(f => {
       const rtype = (f.properties.RESIDENTIAL_TYPE || '').toUpperCase();
       return rtype === 'RESIDENTIAL' || rtype === 'MIXED USE';
     });
 
-    let count = 0;
-
-    filtered.forEach(f => {
-      const p = f.properties;
-      const coords = f.geometry && f.geometry.coordinates;
-      if (!coords || coords.length < 2) return;
-
-      const lat = coords[1];
-      const lng = coords[0];
-
-      // Sanity check: must be in DC area
-      if (lat < 38.7 || lat > 39.1 || lng < -77.2 || lng > -76.8) return;
-
-      const rtype = (p.RESIDENTIAL_TYPE || '').toUpperCase();
-      const isResidential = rtype === 'RESIDENTIAL';
-      const color = isResidential ? '#c0392b' : '#d4a017';
-
-      const units = p.HOUSING_UNIT_COUNT || 0;
-      const ward = p.WARD || '—';
-      const addr = p.ADDRESS || '—';
-      const ssl = p.SSL || '—';
-      const beginDate = p.BEGIN_DATE ? p.BEGIN_DATE.split('T')[0] : '—';
-
-      const popupHtml =
-        '<div class="vac-popup-addr">' + addr + '</div>'
-        + '<div class="vac-popup-row">Type: <span>' + p.RESIDENTIAL_TYPE + '</span></div>'
-        + '<div class="vac-popup-row">Ward: <span>' + ward + '</span></div>'
-        + '<div class="vac-popup-row">Units: <span>' + units + '</span></div>'
-        + '<div class="vac-popup-row">SSL: <span>' + ssl + '</span></div>'
-        + '<div class="vac-popup-row">Vacant Since: <span>' + beginDate + '</span></div>';
-
-      L.circleMarker([lat, lng], {
-        radius: 6,
-        fillColor: color,
-        color: color,
-        weight: 1,
-        opacity: 0.9,
-        fillOpacity: 0.7,
-      }).bindPopup(popupHtml, { maxWidth: 280 }).addTo(vacantMap);
-
-      count++;
+    // Populate ward dropdown
+    const wards = new Set();
+    vacAllFeatures.forEach(f => {
+      const w = f.properties.WARD;
+      if (w) wards.add(w.toString());
+    });
+    const sel = document.getElementById('vac-f-ward');
+    [...wards].sort().forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w; opt.textContent = 'Ward ' + w;
+      sel.appendChild(opt);
     });
 
+    const count = renderVacMarkers(vacAllFeatures);
     document.getElementById('vac-status').innerHTML =
       '<span>' + count.toLocaleString() + '</span> vacant &amp; blighted residential properties in DC';
 
